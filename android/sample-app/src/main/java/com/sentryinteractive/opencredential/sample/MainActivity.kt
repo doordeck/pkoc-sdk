@@ -56,7 +56,6 @@ class MainActivity : ComponentActivity() {
     private var linkInput by mutableStateOf("")
     private var credentialCount by mutableIntStateOf(0)
 
-    // Stored org context from consent flow, used to launch credential selection after login
     private var pendingOrgId: String? = null
     private var pendingOrgName: String? = null
     private var pendingInviteCode: String? = null
@@ -196,14 +195,12 @@ class MainActivity : ComponentActivity() {
         OpenCredentialSDK.setCallback(object : OpenCredentialSDK.Callback {
             override fun onConsentApproved(organizationId: String, organizationName: String, inviteCode: String) {
                 Log.i(TAG, "Consent approved for $organizationName, launching login...")
-                // Store org context so we can launch credential selection after login
                 pendingOrgId = organizationId
                 pendingOrgName = organizationName
                 pendingInviteCode = inviteCode
                 runOnUiThread {
                     statusText = "Consent given for $organizationName. Logging in..."
                 }
-                // Next step: login
                 OpenCredentialSDK.launchLogin(this@MainActivity)
             }
 
@@ -212,7 +209,6 @@ class MainActivity : ComponentActivity() {
                 runOnUiThread {
                     statusText = "Login successful! Select credentials to share..."
                 }
-                // Next step: credential selection with org context
                 val orgId = pendingOrgId
                 val orgName = pendingOrgName
                 val code = pendingInviteCode

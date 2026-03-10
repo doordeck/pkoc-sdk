@@ -6,7 +6,6 @@ struct SampleApp: App
 {
     init()
     {
-        // Initialize the SDK: load stored keys or generate new ones
         let sdk = OpenCredentialSDK.shared
         if !sdk.loadStoredKeys()
         {

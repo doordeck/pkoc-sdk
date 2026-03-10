@@ -11,7 +11,6 @@ struct ContentView: View
 
     @State private var inviteCodeInput = ""
 
-    // Org context stored between consent and credential selection steps
     @State private var pendingOrgId = ""
     @State private var pendingOrgName = ""
     @State private var pendingInviteCode = ""
@@ -35,19 +34,16 @@ struct ContentView: View
             .padding(.horizontal, 24)
             .navigationTitle("OC SDK Sample")
             .navigationBarTitleDisplayMode(.inline)
-            // Step 1: Consent — user accepts the invitation
             .sheet(isPresented: $showConsent)
             {
                 OCConsentView(
                     inviteCode: inviteCodeInput,
                     onProceed: { code, orgName, orgId in
                         showConsent = false
-                        // Store org context for later
                         pendingInviteCode = code
                         pendingOrgName = orgName
                         pendingOrgId = orgId
                         statusMessage = "Consent given for \(orgName). Logging in..."
-                        // Step 2: Launch login
                         showLogin = true
                     },
                     onCancel: {
@@ -56,18 +52,15 @@ struct ContentView: View
                     }
                 )
             }
-            // Step 2: Login — email verification + 2FA
             .sheet(isPresented: $showLogin)
             {
                 OCLoginView(returnOnSuccess: true)
                 {
                     showLogin = false
                     statusMessage = "Login successful! Select credentials to share..."
-                    // Step 3: Launch credential selection
                     showCredentialSelection = true
                 }
             }
-            // Step 3: Credential selection — user selects and approves
             .sheet(isPresented: $showCredentialSelection)
             {
                 OCCredentialSelectionView(
