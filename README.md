@@ -1,0 +1,241 @@
+# OpenCredential SDK
+
+[![Release](https://img.shields.io/github/v/release/doordeck/pkoc-sdk?label=latest)](https://github.com/doordeck/pkoc-sdk/releases/latest)
+
+SDKs for integrating Sentry Interactive OpenCredential into Android and iOS apps. Provides gRPC-Web service clients, email verification (2FA), organization consent, and credential selection — all with built-in UI screens.
+
+## Features
+
+- **Email verification + 2FA** — Login screen with email input and 6-digit code verification
+- **Organization consent** — Consent screen showing org details before credential sharing
+- **Credential selection** — Choose which email credentials to share with an organization
+- **gRPC-Web client** — Built-in transport with RFC 9421 HTTP Message Signatures (P-256 ECDSA)
+
+---
+
+## Android (GitHub Packages)
+
+### Installation
+
+Add the GitHub Packages repository and SDK to your `build.gradle.kts`:
+
+```kotlin
+// In settings.gradle.kts (dependencyResolutionManagement.repositories)
+maven {
+    url = uri("https://maven.pkg.github.com/doordeck/pkoc-sdk")
+    credentials {
+        username = providers.gradleProperty("gpr.user").getOrElse("")
+        password = providers.gradleProperty("gpr.key").getOrElse("")
+    }
+}
+```
+
+Set credentials in `~/.gradle/gradle.properties`:
+
+```properties
+gpr.user=YOUR_GITHUB_USERNAME
+gpr.key=YOUR_GITHUB_PAT_WITH_READ_PACKAGES
+```
+
+```kotlin
+dependencies {
+    implementation("com.sentryinteractive.opencredential:opencredential-sdk:latestVersion")
+}
+```
+
+Or if building locally, include the module in your `settings.gradle.kts`:
+
+```kotlin
+include(":opencredential-sdk")
+project(":opencredential-sdk").projectDir = file("path/to/pkoc-sdk/android/opencredential-sdk")
+```
+
+### Integration
+
+#### 1. Initialize the SDK
+
+In your `Application.onCreate()` or before any SDK calls:
+
+```java
+import com.sentryinteractive.opencredential.sdk.OpenCredentialSDK;
+
+OpenCredentialSDK.initialize(new OpenCredentialSDK.CryptoProvider() {
+    @Override
+    public byte[] getPublicKeyDer() {
+        // Return the DER-encoded P-256 public key from your KeyStore
+        return CryptoProvider.GetPublicKey().getEncoded();
+    }
+
+    @Override
+    public byte[] sign(byte[] data) {
+        // Sign with the device's private key (DER-encoded ECDSA signature)
+        return CryptoProvider.GetSignedMessage(data);
+    }
+});
+```
+
+#### 2. Set up the callback
+
+The SDK uses callbacks to let you orchestrate the flow: consent → login → credential selection → share.
+
+```java
+OpenCredentialSDK.setCallback(new OpenCredentialSDK.Callback() {
+    @Override
+    public void onConsentApproved(String organizationId, String organizationName, String inviteCode) {
+        // User consented — next step: launch login
+        OpenCredentialSDK.launchLogin(activity);
+        // Store orgId, orgName, inviteCode for use after login
+    }
+
+    @Override
+    public void onLoginCompleted() {
+        // Login succeeded — next step: launch credential selection with org context
+        OpenCredentialSDK.launchCredentialSelection(activity, orgId, orgName, inviteCode);
+    }
+
+    @Override
+    public void onCompleted(byte[][] selectedCredentials) {
+        // Flow completed — user approved credential sharing
+        // selectedCredentials contains the proto-encoded Credential bytes
+    }
+
+    @Override
+    public void onCancelled() {
+        // User cancelled the flow
+    }
+});
+```
+
+#### 3. Launch the flow
+
+```java
+// Launch consent with an invite code (starts the full flow via callbacks)
+OpenCredentialSDK.launchConsent(activity, "your-invite-code");
+
+// Or launch individual screens directly
+OpenCredentialSDK.launchLogin(activity);
+OpenCredentialSDK.launchCredentialSelection(activity, orgId, orgName, inviteCode);
+```
+
+---
+
+## iOS (Swift Package Manager)
+
+### Installation
+
+Add the package in Xcode:
+
+1. **File → Add Package Dependencies**
+2. Enter the repository URL: `https://github.com/doordeck/pkoc-sdk.git`
+3. Select `OpenCredentialSDK`
+
+Or add to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/doordeck/pkoc-sdk.git", from: "latestVersion"),
+],
+targets: [
+    .target(
+        name: "YourApp",
+        dependencies: ["OpenCredentialSDK"]
+    ),
+]
+```
+
+### Integration
+
+#### 1. Initialize the SDK
+
+In your `@main` App struct or `AppDelegate`:
+
+```swift
+import OpenCredentialSDK
+
+@main
+struct YourApp: App {
+    init() {
+        let sdk = OpenCredentialSDK.shared
+        if !sdk.loadStoredKeys() {
+            sdk.generateKeys()
+        }
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+```
+
+Or initialize with existing keys:
+
+```swift
+let sdk = OpenCredentialSDK.shared
+sdk.initialize(
+    privateKey: yourP256PrivateKey,
+    publicKey: yourP256PublicKey
+)
+```
+
+#### 2. Use individual views (chained flow)
+
+Use closures to chain the steps: consent → login → credential selection.
+
+```swift
+// Step 1: Consent
+OCConsentView(
+    inviteCode: "your-invite-code",
+    onProceed: { inviteCode, orgName, orgId in
+        // Store org context, then present login
+    },
+    onCancel: {
+        // User cancelled
+    }
+)
+
+// Step 2: Login (presented after consent)
+OCLoginView(returnOnSuccess: true) {
+    // Login succeeded, present credential selection
+}
+
+// Step 3: Credential selection (presented after login)
+OCCredentialSelectionView(
+    organizationName: "Acme Corp",
+    organizationId: "org-123",
+    inviteCode: "invite-456",
+    onApprove: { credentials in
+        // User approved sharing — flow complete
+    }
+)
+```
+
+> **Note:** Without organization context (empty `organizationId`/`inviteCode`), the credential selection view shows credentials in read-only mode without the Approve button.
+
+---
+
+## Architecture
+
+```
+Invite Code
+    │
+    ▼
+ConsentActivity / OCConsentView
+    │ (loads org via OrganizationService.getOrganizationByInviteCode)
+    │
+    ▼ onConsentApproved / onProceed
+    │
+LoginActivity / OCLoginView
+    │ (email verification + 2FA via VerificationService)
+    │
+    ▼ onLoginCompleted / onSuccess
+    │
+CredentialSelectionActivity / OCCredentialSelectionView
+    │ (loads credentials via CredentialService.getCredentials)
+    │ (shares via OrganizationService.shareCredentialWithOrganization)
+    │
+    ▼ onCompleted / onApprove
+```
+
+**gRPC-Web transport:** All API calls use gRPC-Web over HTTP/1.1 to `https://api.opencredential.sentryinteractive.com`. Requests are signed with RFC 9421 HTTP Message Signatures using the device's P-256 key pair.

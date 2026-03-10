@@ -1,0 +1,38 @@
+/* Login */
+"oc_login_title" = "Email Verification";
+"oc_email_placeholder" = "Email address";
+"oc_send_code" = "Send Verification Code";
+"oc_code_subtitle" = "Enter the verification code sent to your email";
+"oc_code_placeholder" = "6-digit code";
+"oc_verify" = "Verify";
+"oc_resend_code" = "Resend Code";
+"oc_email_invalid" = "Please enter a valid email address.";
+"oc_code_required" = "Please enter the verification code.";
+"oc_code_sent" = "Verification code sent!";
+"oc_code_invalid" = "Invalid verification code. Please try again.";
+"oc_code_expired" = "Verification code expired. Please request a new one.";
+"oc_error_network" = "Network error. Please try again.";
+"oc_error_network_detail" = "Network error (%@).";
+
+/* Consent */
+"oc_consent_permission" = "%@ needs your permission to use smartphone access";
+"oc_consent_sharing_info" = "To use Sentry Interactive Mobile Access at buildings managed by %@ you need to agree to sharing the following data.";
+"oc_consent_data_email" = "Email Address";
+"oc_consent_data_phone" = "Phone Number";
+"oc_consent_data_identifiers" = "Unique Identifiers";
+"oc_consent_disclaimer" = "Consenting doesn't automatically mean you'll have access";
+"oc_consent_proceed" = "Proceed";
+"oc_cancel" = "Cancel";
+"oc_retry" = "Retry";
+"oc_error_load_org" = "Failed to load organization details. Please try again.";
+
+/* Credential Selection */
+"oc_credentials_permission" = "%@ needs your permission to use smartphone access";
+"oc_credentials_subtitle" = "Select the email address the organisation knows you by";
+"oc_credentials_empty" = "No email credentials found.";
+"oc_credentials_add_email" = "Add new email";
+"oc_approve" = "Approve";
+
+/* Root View */
+"oc_no_context_title" = "No organisation in context.";
+"oc_no_context_message" = "Use an invitation code from your organisation to get started.";

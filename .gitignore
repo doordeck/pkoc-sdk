@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Android
+android/.gradle/
+android/build/
+android/opencredential-sdk/build/
+android/sample-app/build/
+android/local.properties
+
+android/sample-app/local.properties
+
+# iOS
+ios/.build/
+ios/.swiftpm/
+.build/
+.swiftpm/
+
+# IDEs
+.idea/
+*.xcuserdata/
