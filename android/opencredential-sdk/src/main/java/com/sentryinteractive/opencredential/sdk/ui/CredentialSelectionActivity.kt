@@ -201,7 +201,7 @@ class CredentialSelectionActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Text(
-                    text = "– – – \u25B8",
+                    text = "– – – >",
                     color = MaterialTheme.colorScheme.outlineVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )

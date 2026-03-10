@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Demonstrates SDK integration: consent \u2192 login \u2192 credential selection \u2192 share.",
+                    text = "Demonstrates SDK integration: consent -> login -> credential selection -> share.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

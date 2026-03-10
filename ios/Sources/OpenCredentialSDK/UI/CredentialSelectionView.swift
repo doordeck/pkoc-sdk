@@ -98,7 +98,7 @@ public struct OCCredentialSelectionView: View
                     .font(.system(size: 40))
                     .foregroundColor(.accentColor)
 
-                Text("– – – \u{25B8}")
+                Text("– – – >")
                     .foregroundColor(Color(.systemGray4))
                     .font(.system(size: 16))
 

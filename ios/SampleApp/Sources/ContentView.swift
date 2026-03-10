@@ -111,7 +111,7 @@ struct ContentView: View
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
-            Text("Demonstrates SDK integration: consent \u{2192} login \u{2192} credential selection \u{2192} share.")
+            Text("Demonstrates SDK integration: consent -> login -> credential selection -> share.")
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
