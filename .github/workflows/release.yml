@@ -9,9 +9,8 @@ permissions:
   packages: write
 
 jobs:
-  build-and-release:
+  release:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -28,10 +27,6 @@ jobs:
       - name: Set version
         id: version
         run: echo "version=0.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-
-      - name: Build Android SDK
-        working-directory: android
-        run: ./gradlew :opencredential-sdk:assembleRelease
 
       - name: Publish to GitHub Packages
         working-directory: android
