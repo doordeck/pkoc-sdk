@@ -38,7 +38,7 @@ android {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:4.33.5"
+        artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
     }
     plugins {
         id("grpc") {
