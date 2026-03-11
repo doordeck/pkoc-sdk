@@ -124,8 +124,8 @@ public final class GrpcWebClient
     {
         do
         {
-            let privateKey = OCCrypto.exportPrivateKey()
-            let publicKey  = OCCrypto.exportPublicKey()
+            let privateKey = try OCCrypto.exportPrivateKey()
+            let publicKey  = try OCCrypto.exportPublicKey()
 
             let derPublicKey = publicKey.derRepresentation
 
@@ -179,8 +179,11 @@ internal extension Data
 
     func readBigEndianUInt32(at offset: Int) -> UInt32
     {
-        self.subdata(in: offset..<(offset + 4))
-            .withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let b = self.subdata(in: offset..<(offset + 4))
+        return UInt32(b[b.startIndex]) << 24
+             | UInt32(b[b.startIndex + 1]) << 16
+             | UInt32(b[b.startIndex + 2]) << 8
+             | UInt32(b[b.startIndex + 3])
     }
 
     mutating func appendBigEndianUInt32(_ value: UInt32)

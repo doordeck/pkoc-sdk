@@ -54,7 +54,7 @@ struct ContentView: View
             }
             .sheet(isPresented: $showLogin)
             {
-                OCLoginView(returnOnSuccess: true)
+                OCLoginView()
                 {
                     showLogin = false
                     statusMessage = "Login successful! Select credentials to share..."

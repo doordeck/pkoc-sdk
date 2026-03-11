@@ -14,7 +14,6 @@ internal final class OCLoginViewModel: ObservableObject
     @Published var codeError: String? = nil
     @Published var codeStatus: String? = nil
 
-    var returnOnSuccess: Bool = false
     var onSuccess: (() -> Void)?
 
     private var verificationToken = ""
@@ -37,7 +36,7 @@ internal final class OCLoginViewModel: ObservableObject
         {
             do
             {
-                let derKey = OCCrypto.exportPublicKey().derRepresentation
+                let derKey = try OCCrypto.exportPublicKey().derRepresentation
 
                 let response = try await OCVerificationService.shared.startEmailVerification(
                     email: trimmed,

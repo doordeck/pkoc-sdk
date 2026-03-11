@@ -15,7 +15,7 @@ object OpenCredentialSDK {
     interface CryptoProvider {
         /** Return the DER-encoded public key, or null if unavailable. */
         fun getPublicKeyDer(): ByteArray?
-        /** Sign the given data with the device's private key (DER-encoded signature). */
+        /** Sign the given data with the device's private key */
         fun sign(data: ByteArray): ByteArray?
     }
 

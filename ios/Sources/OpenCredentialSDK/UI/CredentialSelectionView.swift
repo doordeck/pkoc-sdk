@@ -10,6 +10,7 @@ public struct OCCredentialSelectionView: View
 
     @StateObject private var vm = OCCredentialSelectionViewModel()
     @State private var isSharing = false
+    @Environment(\.dismiss) private var dismiss
 
     public init(
         organizationName: String = "",
@@ -73,7 +74,7 @@ public struct OCCredentialSelectionView: View
         }
         .sheet(isPresented: $vm.showLoginSheet)
         {
-            OCLoginView(returnOnSuccess: true)
+            OCLoginView()
             {
                 vm.showLoginSheet = false
                 vm.load()
@@ -198,6 +199,7 @@ public struct OCCredentialSelectionView: View
                                 }
                             }
                             vm.saveSelectedCredentials()
+                            isSharing = false
                             onApprove?(selected)
                         }
                         catch
@@ -210,7 +212,7 @@ public struct OCCredentialSelectionView: View
                 .disabled(!vm.anyChecked || isSharing)
             }
 
-            Button(OCStrings.localized("oc_cancel")) {}
+            Button(OCStrings.localized("oc_cancel")) { dismiss() }
                 .foregroundColor(.accentColor)
                 .padding()
         }

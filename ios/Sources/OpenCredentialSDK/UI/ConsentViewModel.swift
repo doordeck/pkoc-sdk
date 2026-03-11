@@ -11,7 +11,7 @@ internal final class OCConsentViewModel: ObservableObject
     @Published var loadState: LoadState = .loading
     @Published var organization: OCOrganization?
 
-    private(set) var inviteCode: String
+    let inviteCode: String
 
     init(inviteCode: String)
     {

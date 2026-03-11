@@ -24,7 +24,7 @@
 "oc_consent_proceed" = "Proceed";
 "oc_cancel" = "Cancel";
 "oc_retry" = "Retry";
-"oc_error_load_org" = "Failed to load organization details. Please try again.";
+"oc_error_load_org" = "Failed to load organisation details. Please try again.";
 
 /* Credential Selection */
 "oc_credentials_permission" = "%@ needs your permission to use smartphone access";

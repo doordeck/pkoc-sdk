@@ -250,7 +250,9 @@ class LoginActivity : ComponentActivity() {
         try {
             val response = withContext(Dispatchers.IO) {
                 val provider = OpenCredentialSDK.getCryptoProvider()
-                val publicKey = provider?.getPublicKeyDer() ?: ByteArray(0)
+                    ?: throw IllegalStateException("CryptoProvider not initialized. Call OpenCredentialSDK.initialize() first.")
+                val publicKey = provider.getPublicKeyDer()
+                    ?: throw IllegalStateException("Public key unavailable from CryptoProvider.")
 
                 verificationService.startEmailVerification(
                     emailText,

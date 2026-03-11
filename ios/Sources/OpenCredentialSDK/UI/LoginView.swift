@@ -5,12 +5,10 @@ public struct OCLoginView: View
 {
     @StateObject private var vm = OCLoginViewModel()
 
-    var returnOnSuccess: Bool = false
     var onSuccess: (() -> Void)?
 
-    public init(returnOnSuccess: Bool = false, onSuccess: (() -> Void)? = nil)
+    public init(onSuccess: (() -> Void)? = nil)
     {
-        self.returnOnSuccess = returnOnSuccess
         self.onSuccess = onSuccess
     }
 
@@ -50,7 +48,6 @@ public struct OCLoginView: View
         }
         .onAppear
         {
-            vm.returnOnSuccess = returnOnSuccess
             vm.onSuccess = onSuccess
         }
     }

@@ -196,7 +196,7 @@ OCConsentView(
 )
 
 // Step 2: Login (presented after consent)
-OCLoginView(returnOnSuccess: true) {
+OCLoginView {
     // Login succeeded, present credential selection
 }
 
