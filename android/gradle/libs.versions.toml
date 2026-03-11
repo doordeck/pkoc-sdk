@@ -5,10 +5,10 @@ protobuf-plugin = "0.9.6"
 grpc = "1.79.0"
 protobuf = "4.34.0"
 okhttp = "5.3.2"
-bouncycastle = "1.78.1"
-compose-bom = "2024.12.01"
-activity-compose = "1.9.3"
-lifecycle = "2.8.7"
+bouncycastle = "1.83"
+compose-bom = "2026.02.01"
+activity-compose = "1.12.4"
+lifecycle = "2.10.0"
 
 [libraries]
 protobuf-javalite = { group = "com.google.protobuf", name = "protobuf-javalite", version.ref = "protobuf" }
