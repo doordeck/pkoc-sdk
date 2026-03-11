@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login -->
+    <string name="oc_login_title">Sign In</string>
+    <string name="oc_login_subtitle">Enter your email to verify your identity</string>
+    <string name="oc_email_hint">Email address</string>
+    <string name="oc_send_code">Send verification code</string>
+    <string name="oc_resend_code">Resend code</string>
+    <string name="oc_code_hint">Verification code</string>
+    <string name="oc_verify">Verify</string>
+    <string name="oc_code_sent">Verification code sent</string>
+    <string name="oc_email_required">Email is required</string>
+    <string name="oc_code_required">Verification code is required</string>
+    <string name="oc_error_send_code">Failed to send verification code</string>
+    <string name="oc_error_verify_code">Invalid verification code</string>
+    <string name="oc_error_no_token">No verification token. Please send a code first.</string>
+
+    <!-- Consent -->
+    <string name="oc_consent_permission">%1$s needs your permission to use smartphone access</string>
+    <string name="oc_consent_sharing_info">To use Sentry Interactive Mobile Access at buildings managed by %1$s you need to agree to sharing the following data.</string>
+    <string name="oc_consent_data_email">Email Address</string>
+    <string name="oc_consent_data_phone">Phone Number</string>
+    <string name="oc_consent_data_identifiers">Unique Identifiers</string>
+    <string name="oc_consent_disclaimer">Consenting doesn\'t automatically mean you\'ll have access</string>
+    <string name="oc_consent_proceed">Proceed</string>
+    <string name="oc_cancel">Cancel</string>
+    <string name="oc_error_load_org">Failed to load organization details. Please try again.</string>
+    <string name="oc_no_context">No invite code provided</string>
+
+    <!-- Credential Selection -->
+    <string name="oc_credentials_permission">%1$s needs your permission to use smartphone access</string>
+    <string name="oc_credentials_subtitle">Select the email address the organisation knows you by</string>
+    <string name="oc_credentials_empty">No email credentials found.</string>
+    <string name="oc_credentials_add_email">Add new email</string>
+    <string name="oc_approve">Approve</string>
+    <string name="oc_retry">Retry</string>
+    <string name="oc_unknown_identity">Unknown identity</string>
+    <string name="oc_error_load_credentials">Failed to load credentials</string>
+    <string name="oc_error_share_credentials">Failed to share credentials</string>
+</resources>

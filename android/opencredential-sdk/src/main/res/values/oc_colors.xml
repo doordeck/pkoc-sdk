@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="oc_primary">#1565C0</color>
+    <color name="oc_primary_dark">#0D47A1</color>
+    <color name="oc_accent">#448AFF</color>
+    <color name="oc_background">#FAFAFA</color>
+    <color name="oc_text_primary">#212121</color>
+    <color name="oc_text_secondary">#757575</color>
+    <color name="oc_card_background">#FFFFFF</color>
+    <color name="oc_card_border">#E0E0E0</color>
+    <color name="oc_icon_tint">#757575</color>
+</resources>
