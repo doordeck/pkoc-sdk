@@ -79,6 +79,7 @@ public struct OpenCredentialRootView: View
     var onCancelled: () -> Void
 
     @StateObject private var vm = OCRootViewModel()
+    @State private var didComplete = false
 
     public init(
         onCompleted: @escaping ([OCCredential]) -> Void,
@@ -103,7 +104,12 @@ public struct OpenCredentialRootView: View
                     noContextView
 
                 case .main(let credentials):
-                    Color.clear.onAppear { onCompleted(credentials) }
+                    Color.clear.onAppear
+                    {
+                        guard !didComplete else { return }
+                        didComplete = true
+                        onCompleted(credentials)
+                    }
             }
         }
         .onAppear { vm.start() }
@@ -113,6 +119,8 @@ public struct OpenCredentialRootView: View
     {
         VStack(spacing: 24)
         {
+            Spacer()
+
             Image(systemName: "lock.shield")
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
@@ -125,6 +133,12 @@ public struct OpenCredentialRootView: View
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+
+            Spacer()
+
+            Button(OCStrings.localized("oc_cancel")) { onCancelled() }
+                .foregroundColor(.accentColor)
+                .padding(.bottom, 24)
         }
     }
 }

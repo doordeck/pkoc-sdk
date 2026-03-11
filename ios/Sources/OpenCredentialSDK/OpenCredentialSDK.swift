@@ -19,31 +19,25 @@ public final class OpenCredentialSDK
         self.publicKey = publicKey
     }
 
-    /// Generate and store a new P256 key pair, persisting to the KeyStore.
+    /// Generate and store a new P256 key pair, persisting to the Keychain.
     public func generateKeys()
     {
         let key = P256.Signing.PrivateKey()
         self.privateKey = key
         self.publicKey = key.publicKey
-        OCKeyStore.save(
-            keyData: OCKeyData(
-                publicKey: key.publicKey.rawRepresentation,
-                privateKey: key.rawRepresentation
-            )
-        ) { _ in }
+        try? OCKeyStore.save(privateKeyData: key.rawRepresentation)
     }
 
-    /// Load keys from KeyStore. Returns true if keys were loaded.
+    /// Load keys from Keychain. Returns true if keys were loaded.
     @discardableResult
     public func loadStoredKeys() -> Bool
     {
         do
         {
-            let data = try OCKeyStore.loadSync()
-            let priv = try P256.Signing.PrivateKey(rawRepresentation: data.privateKey)
-            let pub  = try P256.Signing.PublicKey(rawRepresentation: data.publicKey)
+            let data = try OCKeyStore.load()
+            let priv = try P256.Signing.PrivateKey(rawRepresentation: data)
             self.privateKey = priv
-            self.publicKey  = pub
+            self.publicKey  = priv.publicKey
             return true
         }
         catch

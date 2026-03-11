@@ -60,7 +60,8 @@ public struct OCLoginView: View
         {
             TextField(OCStrings.localized("oc_email_placeholder"), text: $vm.email)
                 .keyboardType(.emailAddress)
-                .autocapitalization(.none)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
                 .textContentType(.emailAddress)
                 .padding()
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.4)))

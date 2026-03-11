@@ -117,8 +117,8 @@ struct ContentView: View
         VStack(spacing: 12)
         {
             TextField("Invitation code", text: $inviteCodeInput)
-                .autocapitalization(.none)
-                .disableAutocorrection(true)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
                 .padding()
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.4)))
 

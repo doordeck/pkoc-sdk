@@ -1,81 +1,81 @@
 import Foundation
-
-public struct OCKeyData: Codable
-{
-    public let publicKey: Data
-    public let privateKey: Data
-
-    public init(publicKey: Data, privateKey: Data)
-    {
-        self.publicKey = publicKey
-        self.privateKey = privateKey
-    }
-}
+import Security
 
 public enum OCKeyStoreError: Error
 {
-    case keyFileNotFound
+    case keyNotFound
+    case saveFailed(OSStatus)
+    case loadFailed(OSStatus)
+    case deleteFailed(OSStatus)
 }
 
 public final class OCKeyStore
 {
-    private static func fileURL() throws -> URL
-    {
-        try FileManager.default.url(
-            for: .documentDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: false
-        ).appendingPathComponent("com.sentryinteractive.opencredential.keystore")
-    }
+    private static let service = "com.sentryinteractive.opencredential"
+    private static let account = "p256-signing-key"
 
-    public static func loadSync() throws -> OCKeyData
+    public static func save(privateKeyData: Data) throws
     {
-        let fileURL = try fileURL()
-        guard let file = try? FileHandle(forReadingFrom: fileURL) else
-        {
-            throw OCKeyStoreError.keyFileNotFound
-        }
-        return try JSONDecoder().decode(OCKeyData.self, from: file.availableData)
-    }
+        // Delete any existing item first
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
 
-    public static func load(completion: @escaping (Result<OCKeyData, Error>) -> Void)
-    {
-        DispatchQueue.global(qos: .background).async
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: privateKeyData,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        guard status == errSecSuccess else
         {
-            do
-            {
-                let fileURL = try fileURL()
-                guard let file = try? FileHandle(forReadingFrom: fileURL) else
-                {
-                    DispatchQueue.main.async { completion(.failure(OCKeyStoreError.keyFileNotFound)) }
-                    return
-                }
-                let data = try JSONDecoder().decode(OCKeyData.self, from: file.availableData)
-                DispatchQueue.main.async { completion(.success(data)) }
-            }
-            catch
-            {
-                DispatchQueue.main.async { completion(.failure(error)) }
-            }
+            throw OCKeyStoreError.saveFailed(status)
         }
     }
 
-    public static func save(keyData: OCKeyData, completion: @escaping (Result<Bool, Error>) -> Void)
+    public static func load() throws -> Data
     {
-        DispatchQueue.global(qos: .background).async
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess, let data = result as? Data else
         {
-            do
+            if status == errSecItemNotFound
             {
-                let data = try JSONEncoder().encode(keyData)
-                let outFile = try fileURL()
-                try data.write(to: outFile)
-                DispatchQueue.main.async { completion(.success(true)) }
+                throw OCKeyStoreError.keyNotFound
             }
-            catch
-            {
-                DispatchQueue.main.async { completion(.failure(error)) }
-            }
+            throw OCKeyStoreError.loadFailed(status)
+        }
+
+        return data
+    }
+
+    public static func delete() throws
+    {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else
+        {
+            throw OCKeyStoreError.deleteFailed(status)
         }
     }
 }

@@ -32,6 +32,7 @@
 "oc_credentials_empty" = "No email credentials found.";
 "oc_credentials_add_email" = "Add new email";
 "oc_approve" = "Approve";
+"oc_error_load_credentials" = "Failed to load credentials. Please try again.";
 
 /* Root View */
 "oc_no_context_title" = "No organisation in context.";

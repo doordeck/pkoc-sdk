@@ -84,6 +84,7 @@ class ConsentActivity : ComponentActivity() {
 
         val code = inviteCode
         if (code.isNullOrEmpty()) {
+            OpenCredentialSDK.getCallback()?.onCancelled()
             finish()
             return
         }

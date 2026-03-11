@@ -36,7 +36,7 @@ internal final class OCCredentialSelectionViewModel: ObservableObject
             {
                 credentials    = []
                 checkedIndices = []
-                loadState      = .loaded
+                loadState      = .error(OCStrings.localized("oc_error_load_credentials"))
             }
         }
     }
