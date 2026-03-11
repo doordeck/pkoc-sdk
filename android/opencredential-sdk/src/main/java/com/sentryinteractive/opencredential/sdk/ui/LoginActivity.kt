@@ -295,7 +295,6 @@ class LoginActivity : ComponentActivity() {
                 verificationService.completeEmailVerification(token, codeText)
             }
 
-            credentialStore.saveVerificationToken(token)
             isLoading = false
 
             setResult(RESULT_OK)
