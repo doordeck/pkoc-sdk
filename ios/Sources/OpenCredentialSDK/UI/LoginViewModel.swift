@@ -118,7 +118,7 @@ internal final class OCLoginViewModel: ObservableObject
 
     private func isValidEmail(_ value: String) -> Bool
     {
-        let pattern = "[A-Z0-9a-z._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}"
+        let pattern = "^[A-Z0-9a-z._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}$"
         return value.range(of: pattern, options: .regularExpression) != nil
     }
 }
