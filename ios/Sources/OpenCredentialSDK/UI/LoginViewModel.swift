@@ -111,6 +111,7 @@ internal final class OCLoginViewModel: ObservableObject
     func resendCode()
     {
         step      = .email
+        code      = ""
         codeError = nil
         codeStatus = nil
         sendCode()
