@@ -24,16 +24,16 @@
 "oc_consent_proceed" = "Proceed";
 "oc_cancel" = "Cancel";
 "oc_retry" = "Retry";
-"oc_error_load_org" = "Failed to load organisation details. Please try again.";
+"oc_error_load_org" = "Failed to load organization details. Please try again.";
 
 /* Credential Selection */
 "oc_credentials_permission" = "%@ needs your permission to use smartphone access";
-"oc_credentials_subtitle" = "Select the email address the organisation knows you by";
+"oc_credentials_subtitle" = "Select the email address the organization knows you by";
 "oc_credentials_empty" = "No email credentials found.";
 "oc_credentials_add_email" = "Add new email";
 "oc_approve" = "Approve";
 "oc_error_load_credentials" = "Failed to load credentials. Please try again.";
 
 /* Root View */
-"oc_no_context_title" = "No organisation in context.";
-"oc_no_context_message" = "Use an invitation code from your organisation to get started.";
+"oc_no_context_title" = "No organization in context.";
+"oc_no_context_message" = "Use an invitation code from your organization to get started.";
