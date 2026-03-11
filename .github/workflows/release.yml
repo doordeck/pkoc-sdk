@@ -39,8 +39,8 @@ jobs:
       - name: Create GitHub Release (triggers SPM availability)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           gh release create "$VERSION" \
             --title "v$VERSION" \
             --generate-notes
