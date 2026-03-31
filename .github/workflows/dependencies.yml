@@ -32,6 +32,7 @@ jobs:
         uses: gradle/actions/dependency-submission@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f # v6.0.1
         with:
           cache-disabled: true
+          build-root-directory: android
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v4

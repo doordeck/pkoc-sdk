@@ -42,8 +42,8 @@ jobs:
           queries: +security-extended
 
       - name: Build
-        run: |
-          ./gradlew build -x test --no-daemon --no-build-cache
+        working-directory: android
+        run: ./gradlew build -x test --no-daemon --no-build-cache
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
