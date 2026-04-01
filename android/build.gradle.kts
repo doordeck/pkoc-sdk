@@ -23,3 +23,14 @@ plugins {
     alias(libs.plugins.protobuf) apply false
     alias(libs.plugins.compose.compiler) apply false
 }
+
+allprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "io.netty") {
+                useVersion("4.1.132.Final")
+                because("Various security fixes")
+            }
+        }
+    }
+}
