@@ -5,6 +5,10 @@ buildscript {
                 useVersion("4.1.132.Final")
                 because("Various security fixes")
             }
+            if (requested.group == "org.bitbucket.b_c" && requested.name == "jose4j") {
+                useVersion("0.9.6")
+                because("CVE fix: DoS via compressed JWE content (GHSA-3677-xxcr-wjqv)")
+            }
         }
     }
 }
@@ -22,6 +26,10 @@ allprojects {
             if (requested.group == "io.netty") {
                 useVersion("4.1.132.Final")
                 because("Various security fixes")
+            }
+            if (requested.group == "org.bitbucket.b_c" && requested.name == "jose4j") {
+                useVersion("0.9.6")
+                because("CVE fix: DoS via compressed JWE content (GHSA-3677-xxcr-wjqv)")
             }
         }
     }
