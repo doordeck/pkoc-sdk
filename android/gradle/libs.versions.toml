@@ -9,6 +9,9 @@ bouncycastle = "1.83"
 compose-bom = "2026.03.01"
 activity-compose = "1.13.0"
 lifecycle = "2.10.0"
+jdom = "2.0.6.1"
+jose4j = "0.9.6"
+netty = "4.1.132.Final"
 
 [libraries]
 protobuf-javalite = { group = "com.google.protobuf", name = "protobuf-javalite", version.ref = "protobufLib" }
@@ -27,6 +30,10 @@ compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+
+# Build dependencies
+jdom = { group = "org.jdom", name = "jdom2", version.ref = "jdom" }
+jose4j = { group = "org.bitbucket.b_c", name = "jose4j", version.ref = "jose4j" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
