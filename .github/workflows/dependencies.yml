@@ -45,6 +45,7 @@ jobs:
             MIT,
             Apache-2.0,
             BSD-3-Clause
+          # Restrictive licenses allowed in build tools
           allow-dependencies-licenses: >-
             pkg:githubactions/actions/dependency-review-action,
             pkg:githubactions/actions/checkout,
