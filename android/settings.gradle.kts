@@ -6,6 +6,17 @@ pluginManagement {
     }
 }
 
+buildscript {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "io.netty") {
+                useVersion("4.1.132.Final")
+                because("Various security fixes")
+            }
+        }
+    }
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
