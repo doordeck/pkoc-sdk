@@ -7,6 +7,7 @@ android/build/
 android/opencredential-sdk/build/
 android/sample-app/build/
 android/local.properties
+android/.kotlin/
 
 android/sample-app/local.properties
 android/sample-app/.gradle/**/*
