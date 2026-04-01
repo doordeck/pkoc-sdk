@@ -50,4 +50,12 @@ jobs:
             pkg:githubactions/actions/checkout,
             pkg:githubactions/actions/setup-java,
             pkg:githubactions/actions/gradle/actions/dependency-submission,
-            pkg:githubactions/actions/gradle/actions/setup-gradle
+            pkg:githubactions/actions/gradle/actions/setup-gradle,
+            pkg:maven/com.googlecode.juniversalchardet/juniversalchardet,
+            pkg:maven/net.java.dev.jna/jna-platform,
+            pkg:maven/javax.annotation/javax.annotation-api,
+            pkg:maven/org.jdom/jdom2,
+            pkg:maven/org.jacoco/org.jacoco.agent,
+            pkg:maven/org.jacoco/org.jacoco.ant,
+            pkg:maven/org.jacoco/org.jacoco.core,
+            pkg:maven/org.jacoco/org.jacoco.report
