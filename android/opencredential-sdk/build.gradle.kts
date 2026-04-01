@@ -2,7 +2,6 @@ import com.google.protobuf.gradle.id
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.protobuf)
     `maven-publish`

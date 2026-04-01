@@ -1,13 +1,13 @@
 [versions]
-agp = "8.13.2"
+agp = "9.1.0"
 kotlin = "2.3.10"
 protobufPlugin = "0.9.6"
-grpc = "1.79.0"
-protobufLib = "4.34.0"
+grpc = "1.80.0"
+protobufLib = "4.34.1"
 okhttp = "5.3.2"
 bouncycastle = "1.83"
-compose-bom = "2026.02.01"
-activity-compose = "1.12.4"
+compose-bom = "2026.03.01"
+activity-compose = "1.13.0"
 lifecycle = "2.10.0"
 
 [libraries]
@@ -32,5 +32,4 @@ lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
