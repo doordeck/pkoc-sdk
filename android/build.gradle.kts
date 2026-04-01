@@ -9,6 +9,10 @@ buildscript {
                 useVersion("0.9.6")
                 because("CVE fix: DoS via compressed JWE content (GHSA-3677-xxcr-wjqv)")
             }
+            if (requested.group == "org.jdom" && requested.name == "jdom2") {
+                useVersion("2.0.6.1")
+                because("CVE fix: XML External Entity (XXE) Injection in JDOM")
+            }
         }
     }
 }
@@ -30,6 +34,10 @@ allprojects {
             if (requested.group == "org.bitbucket.b_c" && requested.name == "jose4j") {
                 useVersion("0.9.6")
                 because("CVE fix: DoS via compressed JWE content (GHSA-3677-xxcr-wjqv)")
+            }
+            if (requested.group == "org.jdom" && requested.name == "jdom2") {
+                useVersion("2.0.6.1")
+                because("CVE fix: XML External Entity (XXE) Injection in JDOM")
             }
         }
     }
