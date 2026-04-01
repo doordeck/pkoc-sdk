@@ -40,7 +40,7 @@ class GrpcWebClient private constructor() {
             .build()
 
         httpClient.newCall(httpRequest).execute().use { response ->
-            val responseBytes = response.body?.bytes() ?: ByteArray(0)
+            val responseBytes = response.body.bytes()
             val status = extractGrpcStatus(response, responseBytes)
             if (status != 0) throw GrpcWebException(status, extractGrpcMessage(response, responseBytes))
             if (!response.isSuccessful) throw IOException("HTTP error: ${response.code}")
