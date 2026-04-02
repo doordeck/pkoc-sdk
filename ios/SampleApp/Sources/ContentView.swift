@@ -115,7 +115,9 @@ struct ContentView: View
                     hasCredentials = !ids.isEmpty
                 }
             }
-            catch {}
+            catch {
+                // NO-OP
+            }
         }
     }
 
@@ -218,9 +220,8 @@ struct ContentView: View
                 }
             }
         }
-        // .presentationDetents([.medium]) // Requires iOS 16+
     }
-    
+
     private var identityPickerSheet: some View
     {
         NavigationView
@@ -246,7 +247,6 @@ struct ContentView: View
                 }
             }
         }
-        // .presentationDetents([.medium]) // Requires iOS 16+
     }
 
     private var headerSection: some View
