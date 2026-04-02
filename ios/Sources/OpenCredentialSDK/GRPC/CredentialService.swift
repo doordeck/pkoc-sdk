@@ -23,4 +23,13 @@ public final class OCCredentialService
         let msgData = try client.parseDataFrame(responseData)
         return decodeGetCredentialsResponse(msgData)
     }
+
+    public func verifyCredential() async throws
+    {
+        _ = try await client.call(
+            servicePath: servicePath,
+            method: "VerifyCredential",
+            body: Data()
+        )
+    }
 }
