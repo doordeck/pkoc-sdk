@@ -4,8 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,18 +13,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sentryinteractive.opencredential.sdk.OpenCredentialSDK
+import kotlin.concurrent.thread
 
 /**
  * Sample main activity demonstrating OpenCredential SDK integration.
@@ -55,6 +60,11 @@ class MainActivity : ComponentActivity() {
     private var statusText by mutableStateOf("Ready")
     private var linkInput by mutableStateOf("")
     private var credentialCount by mutableIntStateOf(0)
+    private var hasCredentials by mutableStateOf(false)
+    private var identities by mutableStateOf(emptyList<String>())
+    private var isLoading by mutableStateOf(false)
+    private var showDeleteSheet by mutableStateOf(false)
+    private var showIdentityPickerFor by mutableStateOf<String?>(null) // "identity" or "identity+key"
 
     private var pendingOrgId: String? = null
     private var pendingOrgName: String? = null
@@ -70,6 +80,11 @@ class MainActivity : ComponentActivity() {
                 MainScreen()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkCredentials()
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -124,10 +139,26 @@ class MainActivity : ComponentActivity() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                HorizontalDivider()
+                OutlinedButton(
+                    onClick = { showDeleteSheet = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    enabled = hasCredentials && !isLoading,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Delete Credentials")
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                HorizontalDivider()
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = linkInput,
@@ -150,7 +181,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
-                    enabled = linkInput.trim().isNotEmpty(),
+                    enabled = linkInput.trim().isNotEmpty() && !isLoading,
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -187,6 +218,98 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+
+        if (showDeleteSheet) {
+            DeleteBottomSheet()
+        }
+
+        if (showIdentityPickerFor != null) {
+            IdentityPickerSheet()
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun DeleteBottomSheet() {
+        val sheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(
+            onDismissRequest = { showDeleteSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                Text(
+                    text = "Delete Credentials",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                ListItem(
+                    headlineContent = { Text("Delete All") },
+                    supportingContent = { Text("Remove every credential across all identities") },
+                    modifier = Modifier.clickable {
+                        showDeleteSheet = false
+                        deleteCredentials(email = null, keyThumbprint = null)
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Delete by Identity") },
+                    supportingContent = { Text("Remove all keys for a single email") },
+                    modifier = Modifier.clickable {
+                        showDeleteSheet = false
+                        showIdentityPickerFor = "identity"
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Delete by Key (this device)") },
+                    supportingContent = { Text("Remove this device's key across all identities") },
+                    modifier = Modifier.clickable {
+                        showDeleteSheet = false
+                        deleteCredentials(email = null, keyThumbprint = OpenCredentialSDK.getKeyThumbprint())
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Delete by Identity + Key") },
+                    supportingContent = { Text("Remove exactly one credential for this device") },
+                    modifier = Modifier.clickable {
+                        showDeleteSheet = false
+                        showIdentityPickerFor = "identity+key"
+                    }
+                )
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun IdentityPickerSheet() {
+        val sheetState = rememberModalBottomSheetState()
+        val mode = showIdentityPickerFor
+        ModalBottomSheet(
+            onDismissRequest = { showIdentityPickerFor = null },
+            sheetState = sheetState
+        ) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                Text(
+                    text = "Select Identity",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                identities.forEach { email ->
+                    ListItem(
+                        headlineContent = { Text(email) },
+                        modifier = Modifier.clickable {
+                            showIdentityPickerFor = null
+                            val thumbprint = if (mode == "identity+key") OpenCredentialSDK.getKeyThumbprint() else null
+                            deleteCredentials(email = email, keyThumbprint = thumbprint)
+                        }
+                    )
+                }
             }
         }
     }
@@ -236,6 +359,42 @@ class MainActivity : ComponentActivity() {
                 }
             }
         })
+    }
+
+    private fun deleteCredentials(email: String? = null, keyThumbprint: String? = null) {
+        isLoading = true
+        thread {
+            try {
+                OpenCredentialSDK.deleteCredentials(email, keyThumbprint)
+                val remainingIds = try { OpenCredentialSDK.getIdentities() } catch (_: Exception) { emptyList() }
+                runOnUiThread {
+                    isLoading = false
+                    identities = remainingIds
+                    hasCredentials = remainingIds.isNotEmpty()
+                    statusText = "Credentials deleted"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete credentials", e)
+                runOnUiThread {
+                    isLoading = false
+                    statusText = "Failed to delete credentials"
+                }
+            }
+        }
+    }
+
+    private fun checkCredentials() {
+        thread {
+            try {
+                val ids = OpenCredentialSDK.getIdentities()
+                runOnUiThread {
+                    identities = ids
+                    hasCredentials = ids.isNotEmpty()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to check credentials", e)
+            }
+        }
     }
 
     private fun clearPendingOrg() {

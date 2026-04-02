@@ -26,6 +26,48 @@ public final class OpenCredentialSDK
         Task { try? await OCCredentialService.shared.verifyCredential() }
     }
 
+    /// Returns the list of identity strings (emails/phones) associated with this device's key.
+    public func getIdentities() async throws -> [String]
+    {
+        let response = try await OCCredentialService.shared.getCredentials(filter: .sameKey)
+        let ids = response.credentials.compactMap { cred -> String? in
+            guard let identity = cred.identity else { return nil }
+            switch identity.identityCase
+            {
+                case .email(let e): return e
+                case .phone(let p): return p
+                case .none: return nil
+            }
+        }
+        return Array(Set(ids))
+    }
+
+    /// Deletes credentials belonging to the authenticated user. Both fields act as optional AND filters over the full
+    /// set of credentials reachable from the current authentication context:
+    ///
+    /// - (none)            - delete every credential across all identities (GDPR full erasure)
+    /// - identity          - delete all keys for a single identity (e.g. remove an email address)
+    /// - key_thumbprint    - delete a specific key across all identities (e.g. lost device)
+    /// - both              - delete exactly one credential/identity combination
+    ///
+    /// Any approved organization shares are automatically revoked before deletion.
+    public func deleteCredentials(email: String? = nil, keyThumbprint: String? = nil) async throws
+    {
+        try await OCCredentialService.shared.deleteCredentials(email: email, keyThumbprint: keyThumbprint)
+    }
+
+    /// Returns the base64url-encoded SHA-256 thumbprint of this device's public key.
+    public func getKeyThumbprint() -> String?
+    {
+        guard let publicKey = publicKey else { return nil }
+        let der = publicKey.derRepresentation
+        let hash = SHA256.hash(data: der)
+        return Data(hash).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
     /// Generate and store a new P256 key pair, persisting to the Keychain.
     public func generateKeys()
     {

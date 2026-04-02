@@ -2,6 +2,8 @@ package com.sentryinteractive.opencredential.sdk.grpc
 
 import com.google.protobuf.Empty
 import com.sentryinteractive.opencredential.api.credential.CredentialFilter
+import com.sentryinteractive.opencredential.api.common.Identity
+import com.sentryinteractive.opencredential.api.credential.DeleteCredentialsRequest
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsRequest
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsResponse
 import java.io.IOException
@@ -27,6 +29,18 @@ class CredentialService {
         val responseBytes = client.call(SERVICE_PATH, "GetCredentials", request)
         val msgBytes = client.parseGrpcWebDataFrame(responseBytes)
         return GetCredentialsResponse.parseFrom(msgBytes)
+    }
+
+    @Throws(IOException::class, GrpcWebException::class)
+    fun deleteCredentials(email: String? = null, keyThumbprint: String? = null) {
+        val builder = DeleteCredentialsRequest.newBuilder()
+        if (email != null) {
+            builder.setIdentity(Identity.newBuilder().setEmail(email).build())
+        }
+        if (keyThumbprint != null) {
+            builder.setKeyThumbprint(keyThumbprint)
+        }
+        client.call(SERVICE_PATH, "DeleteCredentials", builder.build())
     }
 
     @Throws(IOException::class, GrpcWebException::class)

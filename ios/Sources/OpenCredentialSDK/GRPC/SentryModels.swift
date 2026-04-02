@@ -240,6 +240,22 @@ internal func encodeGetCredentialsRequest(filter: OCCredentialFilter) -> Data
     return enc.build()
 }
 
+internal func encodeDeleteCredentialsRequest(email: String?, keyThumbprint: String?) -> Data
+{
+    var enc = ProtoEncoder()
+    if let email = email
+    {
+        var identityEnc = ProtoEncoder()
+        identityEnc.encodeString(1, email)
+        enc.encodeMessage(1, identityEnc)
+    }
+    if let keyThumbprint = keyThumbprint
+    {
+        enc.encodeString(2, keyThumbprint)
+    }
+    return enc.build()
+}
+
 internal func encodeGetOrganizationByInviteCodeRequest(inviteCode: String) -> Data
 {
     var enc = ProtoEncoder()
