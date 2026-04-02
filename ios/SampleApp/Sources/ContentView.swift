@@ -15,6 +15,13 @@ struct ContentView: View
     @State private var pendingOrgName = ""
     @State private var pendingInviteCode = ""
 
+    @State private var identities: [String] = []
+    @State private var hasCredentials = false
+    @State private var isLoading = false
+    @State private var showDeleteSheet = false
+    @State private var showIdentityPicker = false
+    @State private var identityPickerMode = "" // "identity" or "identity+key"
+
     var body: some View
     {
         NavigationView
@@ -22,6 +29,8 @@ struct ContentView: View
             VStack(spacing: 0)
             {
                 headerSection
+
+                deleteButton
 
                 Divider().padding(.vertical, 16)
 
@@ -34,6 +43,9 @@ struct ContentView: View
             .padding(.horizontal, 24)
             .navigationTitle("OC SDK Sample")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { checkCredentials() }
+            .sheet(isPresented: $showDeleteSheet) { deleteSheet }
+            .sheet(isPresented: $showIdentityPicker) { identityPickerSheet }
             .sheet(isPresented: $showConsent)
             {
                 OCConsentView(
@@ -49,6 +61,7 @@ struct ContentView: View
                     onCancel: {
                         showConsent = false
                         statusMessage = "Consent cancelled"
+                        checkCredentials()
                     }
                 )
             }
@@ -59,6 +72,7 @@ struct ContentView: View
                     showLogin = false
                     statusMessage = "Login successful! Select credentials to share..."
                     showCredentialSelection = true
+                    checkCredentials()
                 }
             }
             .sheet(isPresented: $showCredentialSelection)
@@ -72,6 +86,7 @@ struct ContentView: View
                         credentialCount = credentials.count
                         statusMessage = "Flow completed! \(credentials.count) credential(s) shared."
                         clearPendingOrg()
+                        checkCredentials()
                     }
                 )
             }
@@ -85,7 +100,154 @@ struct ContentView: View
         pendingInviteCode = ""
     }
 
+    // MARK: - Credentials
+
+    private func checkCredentials()
+    {
+        Task
+        {
+            do
+            {
+                let ids = try await OpenCredentialSDK.shared.getIdentities()
+                await MainActor.run
+                {
+                    identities = ids
+                    hasCredentials = !ids.isEmpty
+                }
+            }
+            catch {}
+        }
+    }
+
+    private func deleteCredentials(email: String? = nil, keyThumbprint: String? = nil)
+    {
+        isLoading = true
+        Task
+        {
+            do
+            {
+                try await OpenCredentialSDK.shared.deleteCredentials(email: email, keyThumbprint: keyThumbprint)
+                let remainingIds = (try? await OpenCredentialSDK.shared.getIdentities()) ?? []
+                await MainActor.run
+                {
+                    isLoading = false
+                    identities = remainingIds
+                    hasCredentials = !remainingIds.isEmpty
+                    statusMessage = "Credentials deleted"
+                }
+            }
+            catch
+            {
+                await MainActor.run
+                {
+                    isLoading = false
+                    statusMessage = "Failed to delete credentials"
+                }
+            }
+        }
+    }
+
     // MARK: - Sections
+
+    private var deleteButton: some View
+    {
+        Button
+        {
+            showDeleteSheet = true
+        }
+        label:
+        {
+            Group
+            {
+                if isLoading
+                {
+                    ProgressView()
+                }
+                else
+                {
+                    Text("Delete Credentials")
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentColor))
+        }
+        .disabled(!hasCredentials || isLoading)
+        .padding(.top, 16)
+    }
+
+    private var deleteSheet: some View
+    {
+        NavigationView
+        {
+            List
+            {
+                Button("Delete All")
+                {
+                    showDeleteSheet = false
+                    deleteCredentials()
+                }
+
+                Button("Delete by Identity")
+                {
+                    showDeleteSheet = false
+                    identityPickerMode = "identity"
+                    showIdentityPicker = true
+                }
+
+                Button("Delete by Key (this device)")
+                {
+                    showDeleteSheet = false
+                    deleteCredentials(keyThumbprint: OpenCredentialSDK.shared.getKeyThumbprint())
+                }
+
+                Button("Delete by Identity + Key")
+                {
+                    showDeleteSheet = false
+                    identityPickerMode = "identity+key"
+                    showIdentityPicker = true
+                }
+            }
+            .navigationTitle("Delete Credentials")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar
+            {
+                ToolbarItem(placement: .cancellationAction)
+                {
+                    Button("Cancel") { showDeleteSheet = false }
+                }
+            }
+        }
+        // .presentationDetents([.medium]) // Requires iOS 16+
+    }
+    
+    private var identityPickerSheet: some View
+    {
+        NavigationView
+        {
+            List(identities, id: \.self)
+            { identity in
+                Button(identity)
+                {
+                    showIdentityPicker = false
+                    let thumbprint = identityPickerMode == "identity+key"
+                        ? OpenCredentialSDK.shared.getKeyThumbprint()
+                        : nil
+                    deleteCredentials(email: identity, keyThumbprint: thumbprint)
+                }
+            }
+            .navigationTitle("Select Identity")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar
+            {
+                ToolbarItem(placement: .cancellationAction)
+                {
+                    Button("Cancel") { showIdentityPicker = false }
+                }
+            }
+        }
+        // .presentationDetents([.medium]) // Requires iOS 16+
+    }
 
     private var headerSection: some View
     {
@@ -131,7 +293,7 @@ struct ContentView: View
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
-            .disabled(inviteCodeInput.isEmpty)
+            .disabled(inviteCodeInput.isEmpty || isLoading)
         }
     }
 

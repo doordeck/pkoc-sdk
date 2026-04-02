@@ -24,6 +24,16 @@ public final class OCCredentialService
         return decodeGetCredentialsResponse(msgData)
     }
 
+    public func deleteCredentials(email: String? = nil, keyThumbprint: String? = nil) async throws
+    {
+        let body = encodeDeleteCredentialsRequest(email: email, keyThumbprint: keyThumbprint)
+        _ = try await client.call(
+            servicePath: servicePath,
+            method: "DeleteCredentials",
+            body: body
+        )
+    }
+
     public func verifyCredential() async throws
     {
         _ = try await client.call(
