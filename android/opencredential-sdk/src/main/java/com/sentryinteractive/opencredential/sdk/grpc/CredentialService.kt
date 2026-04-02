@@ -1,5 +1,6 @@
 package com.sentryinteractive.opencredential.sdk.grpc
 
+import com.google.protobuf.Empty
 import com.sentryinteractive.opencredential.api.credential.CredentialFilter
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsRequest
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsResponse
@@ -26,5 +27,10 @@ class CredentialService {
         val responseBytes = client.call(SERVICE_PATH, "GetCredentials", request)
         val msgBytes = client.parseGrpcWebDataFrame(responseBytes)
         return GetCredentialsResponse.parseFrom(msgBytes)
+    }
+
+    @Throws(IOException::class, GrpcWebException::class)
+    fun verifyCredential() {
+        client.call(SERVICE_PATH, "VerifyCredential", Empty.getDefaultInstance())
     }
 }

@@ -17,6 +17,13 @@ public final class OpenCredentialSDK
     {
         self.privateKey = privateKey
         self.publicKey = publicKey
+        verifyOnServer()
+    }
+
+    // Fire and forget — updates the server's last-seen timestamp for this credential
+    private func verifyOnServer()
+    {
+        Task { try? await OCCredentialService.shared.verifyCredential() }
     }
 
     /// Generate and store a new P256 key pair, persisting to the Keychain.
