@@ -1,6 +1,12 @@
 import SwiftUI
 import OpenCredentialSDK
 
+private enum DeleteMode
+{
+    case identity
+    case identityAndKey
+}
+
 struct ContentView: View
 {
     @State private var statusMessage = "Ready"
@@ -20,7 +26,7 @@ struct ContentView: View
     @State private var isLoading = false
     @State private var showDeleteSheet = false
     @State private var showIdentityPicker = false
-    @State private var identityPickerMode = "" // "identity" or "identity+key"
+    @State private var identityPickerMode: DeleteMode = .identity
 
     var body: some View
     {
@@ -193,7 +199,7 @@ struct ContentView: View
                 Button("Delete by Identity")
                 {
                     showDeleteSheet = false
-                    identityPickerMode = "identity"
+                    identityPickerMode = .identity
                     showIdentityPicker = true
                 }
 
@@ -213,7 +219,7 @@ struct ContentView: View
                 Button("Delete by Identity + Key")
                 {
                     showDeleteSheet = false
-                    identityPickerMode = "identity+key"
+                    identityPickerMode = .identityAndKey
                     showIdentityPicker = true
                 }
             }
@@ -238,18 +244,17 @@ struct ContentView: View
                 Button(identity.value)
                 {
                     showIdentityPicker = false
-                    if identityPickerMode == "identity+key"
+                    switch identityPickerMode
                     {
-                        guard let thumbprint = OpenCredentialSDK.shared.getKeyThumbprint() else
-                        {
-                            statusMessage = "Cannot delete by Identity + Key: no key is available on this device."
-                            return
-                        }
-                        deleteCredentials(identity: identity, keyThumbprint: thumbprint)
-                    }
-                    else
-                    {
-                        deleteCredentials(identity: identity, keyThumbprint: nil)
+                        case .identity:
+                            deleteCredentials(identity: identity, keyThumbprint: nil)
+                        case .identityAndKey:
+                            guard let thumbprint = OpenCredentialSDK.shared.getKeyThumbprint() else
+                            {
+                                statusMessage = "Cannot delete by Identity + Key: no key is available on this device."
+                                return
+                            }
+                            deleteCredentials(identity: identity, keyThumbprint: thumbprint)
                     }
                 }
             }
