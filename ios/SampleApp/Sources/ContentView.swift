@@ -110,20 +110,22 @@ struct ContentView: View
 
     private func checkCredentials()
     {
-        Task
+        Task { await refreshIdentities() }
+    }
+
+    @MainActor
+    private func refreshIdentities() async
+    {
+        isLoading = true
+        defer { isLoading = false }
+        do
         {
-            do
-            {
-                let ids = try await OpenCredentialSDK.shared.getIdentities()
-                await MainActor.run
-                {
-                    identities = ids
-                    hasCredentials = !ids.isEmpty
-                }
-            }
-            catch {
-                // NO-OP
-            }
+            identities = try await OpenCredentialSDK.shared.getIdentities()
+            hasCredentials = !identities.isEmpty
+        }
+        catch
+        {
+            print("OC sample: getIdentities() failed: \(error)")
         }
     }
 
@@ -260,6 +262,7 @@ struct ContentView: View
             }
             .navigationTitle("Select Identity")
             .navigationBarTitleDisplayMode(.inline)
+            .task { await refreshIdentities() }
             .toolbar
             {
                 ToolbarItem(placement: .cancellationAction)
