@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,7 +117,7 @@ class CredentialSelectionActivity : ComponentActivity() {
         super.onResume()
         if (hasLoadedOnce) {
             isLoading = true
-            kotlinx.coroutines.MainScope().launch { loadCredentials() }
+            lifecycleScope.launch { loadCredentials() }
         }
     }
 
