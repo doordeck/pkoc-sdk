@@ -74,16 +74,15 @@ object OpenCredentialSDK {
     }
 
     /**
-     * Returns the list of identities (emails/phones) associated with this device's key.
+     * Returns the list of identities (emails/phones) associated with this device's key,
+     * in the order returned by the server.
      * This is a blocking network call — run it off the main thread.
      */
     @JvmStatic
     @Throws(Exception::class)
     fun getIdentities(): List<OCIdentity> {
         val response = CredentialService().getCredentials(CredentialFilter.CREDENTIAL_FILTER_SAME_KEY)
-        return response.credentialsList
-            .mapNotNull { cred -> OCIdentity.fromProto(cred.identity) }
-            .distinct()
+        return response.credentialsList.mapNotNull { cred -> OCIdentity.fromProto(cred.identity) }
     }
 
     /**

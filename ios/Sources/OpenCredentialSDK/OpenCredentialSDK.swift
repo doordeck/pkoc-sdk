@@ -26,16 +26,16 @@ public final class OpenCredentialSDK
         Task { try? await OCCredentialService.shared.verifyCredential() }
     }
 
-    /// Returns the list of identities (emails/phones) associated with this device's key.
+    /// Returns the list of identities (emails/phones) associated with this device's key,
+    /// in the order returned by the server.
     public func getIdentities() async throws -> [OCIdentity]
     {
         let response = try await OCCredentialService.shared.getCredentials(filter: .sameKey)
-        let identities = response.credentials.compactMap { cred -> OCIdentity? in
+        return response.credentials.compactMap { cred -> OCIdentity? in
             guard let identity = cred.identity else { return nil }
             if case .none = identity.identityCase { return nil }
             return identity
         }
-        return Array(Set(identities))
     }
 
     /// Deletes credentials belonging to the authenticated user. Both fields act as optional AND filters over the full
