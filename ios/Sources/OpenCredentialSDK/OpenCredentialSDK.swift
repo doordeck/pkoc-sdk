@@ -26,20 +26,16 @@ public final class OpenCredentialSDK
         Task { try? await OCCredentialService.shared.verifyCredential() }
     }
 
-    /// Returns the list of identity strings (emails/phones) associated with this device's key.
-    public func getIdentities() async throws -> [String]
+    /// Returns the list of identities (emails/phones) associated with this device's key.
+    public func getIdentities() async throws -> [OCIdentity]
     {
         let response = try await OCCredentialService.shared.getCredentials(filter: .sameKey)
-        let ids = response.credentials.compactMap { cred -> String? in
+        let identities = response.credentials.compactMap { cred -> OCIdentity? in
             guard let identity = cred.identity else { return nil }
-            switch identity.identityCase
-            {
-                case .email(let e): return e
-                case .phone(let p): return p
-                case .none: return nil
-            }
+            if case .none = identity.identityCase { return nil }
+            return identity
         }
-        return Array(Set(ids))
+        return Array(Set(identities))
     }
 
     /// Deletes credentials belonging to the authenticated user. Both fields act as optional AND filters over the full
@@ -51,9 +47,9 @@ public final class OpenCredentialSDK
     /// - both              - delete exactly one credential/identity combination
     ///
     /// Any approved organization shares are automatically revoked before deletion.
-    public func deleteCredentials(email: String? = nil, keyThumbprint: String? = nil) async throws
+    public func deleteCredentials(identity: OCIdentity? = nil, keyThumbprint: String? = nil) async throws
     {
-        try await OCCredentialService.shared.deleteCredentials(email: email, keyThumbprint: keyThumbprint)
+        try await OCCredentialService.shared.deleteCredentials(identity: identity, keyThumbprint: keyThumbprint)
     }
 
     /// Returns the base64url-encoded SHA-256 thumbprint of this device's public key.

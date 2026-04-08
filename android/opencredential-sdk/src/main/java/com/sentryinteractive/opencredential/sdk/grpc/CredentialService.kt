@@ -2,10 +2,10 @@ package com.sentryinteractive.opencredential.sdk.grpc
 
 import com.google.protobuf.Empty
 import com.sentryinteractive.opencredential.api.credential.CredentialFilter
-import com.sentryinteractive.opencredential.api.common.Identity
 import com.sentryinteractive.opencredential.api.credential.DeleteCredentialsRequest
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsRequest
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsResponse
+import com.sentryinteractive.opencredential.sdk.OCIdentity
 import java.io.IOException
 
 /**
@@ -32,10 +32,10 @@ class CredentialService {
     }
 
     @Throws(IOException::class, GrpcWebException::class)
-    fun deleteCredentials(email: String? = null, keyThumbprint: String? = null) {
+    fun deleteCredentials(identity: OCIdentity? = null, keyThumbprint: String? = null) {
         val builder = DeleteCredentialsRequest.newBuilder()
-        if (email != null) {
-            builder.setIdentity(Identity.newBuilder().setEmail(email).build())
+        if (identity != null) {
+            builder.setIdentity(identity.toProto())
         }
         if (keyThumbprint != null) {
             builder.setKeyThumbprint(keyThumbprint)

@@ -74,21 +74,16 @@ object OpenCredentialSDK {
     }
 
     /**
-     * Returns the list of identity strings (emails/phones) associated with this device's key.
+     * Returns the list of identities (emails/phones) associated with this device's key.
      * This is a blocking network call — run it off the main thread.
      */
     @JvmStatic
     @Throws(Exception::class)
-    fun getIdentities(): List<String> {
+    fun getIdentities(): List<OCIdentity> {
         val response = CredentialService().getCredentials(CredentialFilter.CREDENTIAL_FILTER_SAME_KEY)
-        return response.credentialsList.map { cred ->
-            val identity = cred.identity
-            when {
-                identity.hasEmail() -> identity.email
-                identity.hasPhone() -> identity.phone
-                else -> ""
-            }
-        }.filter { it.isNotEmpty() }.distinct()
+        return response.credentialsList
+            .mapNotNull { cred -> OCIdentity.fromProto(cred.identity) }
+            .distinct()
     }
 
     /**
@@ -105,8 +100,8 @@ object OpenCredentialSDK {
      */
     @JvmStatic
     @Throws(Exception::class)
-    fun deleteCredentials(email: String? = null, keyThumbprint: String? = null) {
-        CredentialService().deleteCredentials(email, keyThumbprint)
+    fun deleteCredentials(identity: OCIdentity? = null, keyThumbprint: String? = null) {
+        CredentialService().deleteCredentials(identity, keyThumbprint)
     }
 
     /**

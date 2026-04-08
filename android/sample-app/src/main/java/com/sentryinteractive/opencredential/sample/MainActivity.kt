@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sentryinteractive.opencredential.sdk.OCIdentity
 import com.sentryinteractive.opencredential.sdk.OpenCredentialSDK
 import kotlin.concurrent.thread
 
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
     private var linkInput by mutableStateOf("")
     private var credentialCount by mutableIntStateOf(0)
     private var hasCredentials by mutableStateOf(false)
-    private var identities by mutableStateOf(emptyList<String>())
+    private var identities by mutableStateOf(emptyList<OCIdentity>())
     private var isLoading by mutableStateOf(false)
     private var showDeleteSheet by mutableStateOf(false)
     private var showIdentityPickerFor by mutableStateOf<String?>(null) // "identity" or "identity+key"
@@ -250,7 +251,7 @@ class MainActivity : ComponentActivity() {
                     supportingContent = { Text("Remove every credential across all identities") },
                     modifier = Modifier.clickable {
                         showDeleteSheet = false
-                        deleteCredentials(email = null, keyThumbprint = null)
+                        deleteCredentials(identity = null, keyThumbprint = null)
                     }
                 )
 
@@ -268,7 +269,7 @@ class MainActivity : ComponentActivity() {
                     supportingContent = { Text("Remove this device's key across all identities") },
                     modifier = Modifier.clickable {
                         showDeleteSheet = false
-                        deleteCredentials(email = null, keyThumbprint = OpenCredentialSDK.getKeyThumbprint())
+                        deleteCredentials(identity = null, keyThumbprint = OpenCredentialSDK.getKeyThumbprint())
                     }
                 )
 
@@ -300,13 +301,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                identities.forEach { email ->
+                identities.forEach { identity ->
                     ListItem(
-                        headlineContent = { Text(email) },
+                        headlineContent = { Text(identity.value) },
                         modifier = Modifier.clickable {
                             showIdentityPickerFor = null
                             val thumbprint = if (mode == "identity+key") OpenCredentialSDK.getKeyThumbprint() else null
-                            deleteCredentials(email = email, keyThumbprint = thumbprint)
+                            deleteCredentials(identity = identity, keyThumbprint = thumbprint)
                         }
                     )
                 }
@@ -361,11 +362,11 @@ class MainActivity : ComponentActivity() {
         })
     }
 
-    private fun deleteCredentials(email: String? = null, keyThumbprint: String? = null) {
+    private fun deleteCredentials(identity: OCIdentity? = null, keyThumbprint: String? = null) {
         isLoading = true
         thread {
             try {
-                OpenCredentialSDK.deleteCredentials(email, keyThumbprint)
+                OpenCredentialSDK.deleteCredentials(identity, keyThumbprint)
                 val remainingIds = try { OpenCredentialSDK.getIdentities() } catch (_: Exception) { emptyList() }
                 runOnUiThread {
                     isLoading = false

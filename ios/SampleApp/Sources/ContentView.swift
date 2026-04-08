@@ -15,7 +15,7 @@ struct ContentView: View
     @State private var pendingOrgName = ""
     @State private var pendingInviteCode = ""
 
-    @State private var identities: [String] = []
+    @State private var identities: [OCIdentity] = []
     @State private var hasCredentials = false
     @State private var isLoading = false
     @State private var showDeleteSheet = false
@@ -121,14 +121,14 @@ struct ContentView: View
         }
     }
 
-    private func deleteCredentials(email: String? = nil, keyThumbprint: String? = nil)
+    private func deleteCredentials(identity: OCIdentity? = nil, keyThumbprint: String? = nil)
     {
         isLoading = true
         Task
         {
             do
             {
-                try await OpenCredentialSDK.shared.deleteCredentials(email: email, keyThumbprint: keyThumbprint)
+                try await OpenCredentialSDK.shared.deleteCredentials(identity: identity, keyThumbprint: keyThumbprint)
                 let remainingIds = (try? await OpenCredentialSDK.shared.getIdentities()) ?? []
                 await MainActor.run
                 {
@@ -228,13 +228,13 @@ struct ContentView: View
         {
             List(identities, id: \.self)
             { identity in
-                Button(identity)
+                Button(identity.value)
                 {
                     showIdentityPicker = false
                     let thumbprint = identityPickerMode == "identity+key"
                         ? OpenCredentialSDK.shared.getKeyThumbprint()
                         : nil
-                    deleteCredentials(email: identity, keyThumbprint: thumbprint)
+                    deleteCredentials(identity: identity, keyThumbprint: thumbprint)
                 }
             }
             .navigationTitle("Select Identity")

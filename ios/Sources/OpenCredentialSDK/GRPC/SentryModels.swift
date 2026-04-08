@@ -24,15 +24,30 @@ public enum OCCredentialFilter: Int
 
 // MARK: - Public Models
 
-public struct OCIdentity
+public struct OCIdentity: Hashable
 {
-    public enum IdentityCase
+    public enum IdentityCase: Hashable
     {
         case email(String)
         case phone(String)
         case none
     }
     public var identityCase: IdentityCase = .none
+
+    public init(identityCase: IdentityCase = .none)
+    {
+        self.identityCase = identityCase
+    }
+
+    public static func email(_ address: String) -> OCIdentity
+    {
+        OCIdentity(identityCase: .email(address))
+    }
+
+    public static func phone(_ number: String) -> OCIdentity
+    {
+        OCIdentity(identityCase: .phone(number))
+    }
 
     public var email: String?
     {
@@ -44,6 +59,17 @@ public struct OCIdentity
     {
         if case .phone(let v) = identityCase { return v }
         return nil
+    }
+
+    /// The underlying string value (email address or phone number), for display.
+    public var value: String
+    {
+        switch identityCase
+        {
+            case .email(let v): return v
+            case .phone(let v): return v
+            case .none: return ""
+        }
     }
 }
 
@@ -240,13 +266,18 @@ internal func encodeGetCredentialsRequest(filter: OCCredentialFilter) -> Data
     return enc.build()
 }
 
-internal func encodeDeleteCredentialsRequest(email: String?, keyThumbprint: String?) -> Data
+internal func encodeDeleteCredentialsRequest(identity: OCIdentity?, keyThumbprint: String?) -> Data
 {
     var enc = ProtoEncoder()
-    if let email = email
+    if let identity = identity
     {
         var identityEnc = ProtoEncoder()
-        identityEnc.encodeString(1, email)
+        switch identity.identityCase
+        {
+            case .email(let email): identityEnc.encodeString(1, email)
+            case .phone(let phone): identityEnc.encodeString(2, phone)
+            case .none: break
+        }
         enc.encodeMessage(1, identityEnc)
     }
     if let keyThumbprint = keyThumbprint
