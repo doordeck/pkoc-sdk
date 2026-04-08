@@ -269,7 +269,13 @@ class MainActivity : ComponentActivity() {
                     supportingContent = { Text("Remove this device's key across all identities") },
                     modifier = Modifier.clickable {
                         showDeleteSheet = false
-                        deleteCredentials(identity = null, keyThumbprint = OpenCredentialSDK.getKeyThumbprint())
+                        val thumbprint = OpenCredentialSDK.getKeyThumbprint()
+                        if (thumbprint != null) {
+                            deleteCredentials(identity = null, keyThumbprint = thumbprint)
+                        } else {
+                            Log.w(TAG, "Delete by Key requested, but key thumbprint is null; aborting to avoid deleting all credentials.")
+                            statusText = "No device key available; cannot delete by key."
+                        }
                     }
                 )
 

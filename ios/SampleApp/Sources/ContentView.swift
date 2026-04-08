@@ -200,7 +200,14 @@ struct ContentView: View
                 Button("Delete by Key (this device)")
                 {
                     showDeleteSheet = false
-                    deleteCredentials(keyThumbprint: OpenCredentialSDK.shared.getKeyThumbprint())
+                    if let thumbprint = OpenCredentialSDK.shared.getKeyThumbprint()
+                    {
+                        deleteCredentials(keyThumbprint: thumbprint)
+                    }
+                    else
+                    {
+                        statusMessage = "No device key available; cannot delete by key."
+                    }
                 }
 
                 Button("Delete by Identity + Key")
@@ -231,10 +238,19 @@ struct ContentView: View
                 Button(identity.value)
                 {
                     showIdentityPicker = false
-                    let thumbprint = identityPickerMode == "identity+key"
-                        ? OpenCredentialSDK.shared.getKeyThumbprint()
-                        : nil
-                    deleteCredentials(identity: identity, keyThumbprint: thumbprint)
+                    if identityPickerMode == "identity+key"
+                    {
+                        guard let thumbprint = OpenCredentialSDK.shared.getKeyThumbprint() else
+                        {
+                            statusMessage = "Cannot delete by Identity + Key: no key is available on this device."
+                            return
+                        }
+                        deleteCredentials(identity: identity, keyThumbprint: thumbprint)
+                    }
+                    else
+                    {
+                        deleteCredentials(identity: identity, keyThumbprint: nil)
+                    }
                 }
             }
             .navigationTitle("Select Identity")
