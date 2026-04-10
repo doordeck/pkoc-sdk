@@ -93,6 +93,14 @@ class SampleCryptoProvider(context: Context) : OpenCredentialSDK.CryptoProvider 
 
     @Throws(Exception::class)
     private fun generateKeyPair(alias: String, attestationChallenge: ByteArray?): String {
+        // codeql[java/potentially-weak-cryptographic-algorithm] -- secp256r1 (NIST P-256)
+        // CodeQL flags `KEY_ALGORITHM_EC` because the JCA "EC" algorithm name alone does not
+        // pin a specific curve and could in theory pick a weak one. We pin it explicitly via
+        // `setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))` two lines below — that
+        // is the NIST P-256 curve, ~128-bit security level, the standard for TLS, JWT (ES256),
+        // WebAuthn / FIDO2, Apple App Attest, and Android Key Attestation. It is also the only
+        // curve the OpenCredential proto currently supports (`CREDENTIAL_TYPE_P256`). The
+        // alert is a false positive against modern asymmetric crypto and is dismissed.
         val kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
         val specBuilder = KeyGenParameterSpec.Builder(
             alias,

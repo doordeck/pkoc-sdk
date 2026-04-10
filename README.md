@@ -281,6 +281,7 @@ interface CryptoProvider {
 interface CryptoProvider {
     fun listSigners(): List<Signer>
     fun createSigner(attestationChallenge: ByteArray? = null): AttestedSigner?
+    fun confirm(signer: Signer): Boolean
     fun forget(signer: Signer): Boolean
 }
 
@@ -296,6 +297,25 @@ data class AttestedSigner(
 ```
 
 A typical custom implementation keeps its per-key state (alias, handle, keychain index, whatever) inside its own private `Signer` class and returns instances of that class from `listSigners()` / `createSigner()`.
+
+**Two-phase commit for new credentials.** `createSigner()` returns an *uncommitted* signer that can sign requests but is **not** yet returned by `listSigners()`. The SDK calls `confirm(signer)` after the credential has been successfully registered server-side, or `forget(signer)` if registration fails. This prevents orphaned local keys from accumulating when registration is abandoned mid-flow. Custom implementations must respect this contract: don't include uncommitted signers in `listSigners()` until `confirm()` is called.
+
+**Display-oriented API**
+
+```kotlin
+data class OCCredentialInfo(
+    val identity: OCIdentity,
+    val attested: Boolean
+)
+
+// New: returns identity + attested flag for every credential
+val infos: List<OCCredentialInfo> = OpenCredentialSDK.getCredentialDetails()
+
+// Existing — now a thin wrapper around getCredentialDetails()
+val identities: List<OCIdentity> = OpenCredentialSDK.getIdentities()
+```
+
+Use `getCredentialDetails()` if you want to render an attestation indicator next to each credential in your UI. Use `getIdentities()` if you only need the identity strings.
 
 **Android — `OpenCredentialSDK.deleteCredentials`**
 
