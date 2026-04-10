@@ -1,22 +1,69 @@
 syntax = "proto3";
+
 package com.sentryinteractive.opencredential.verification.v1alpha;
+
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "types.proto";
+
 option java_multiple_files = true;
 option java_package = "com.sentryinteractive.opencredential.api.verification";
 option java_outer_classname = "VerificationProtoV1Alpha";
 
 service VerificationService {
-  rpc StartEmailVerification(StartEmailVerificationRequest) returns (StartEmailVerificationResponse);
-  rpc CompleteEmailVerification(CompleteEmailVerificationRequest) returns (google.protobuf.Empty);
+  /*
+   * Generate a random attestation challenge for use during device attestation.
+   * The returned challenge must be used when generating an attestation document
+   * on the client device, and the challenge_token must be sent back alongside the
+   * attestation document in StartEmailVerification.
+   */
+  rpc GetAttestationChallenge(google.protobuf.Empty)
+      returns (GetAttestationChallengeResponse);
+
+  /*
+   * Start the email verification process for a given email and credential.
+   */
+  rpc StartEmailVerification(StartEmailVerificationRequest)
+      returns (StartEmailVerificationResponse);
+
+  /*
+   * Complete the email verification process by providing the verification token and code.
+   */
+  rpc CompleteEmailVerification(CompleteEmailVerificationRequest)
+      returns (google.protobuf.Empty);
+}
+
+message GetAttestationChallengeResponse {
+  bytes challenge = 1;
+  string challenge_token = 2;
+  google.protobuf.Timestamp expires_at = 3;
 }
 
 message StartEmailVerificationRequest {
   string email = 1;
   bytes credential = 2;
   com.sentryinteractive.opencredential.common.v1alpha.CredentialType credential_type = 3;
-  string attestation_document = 4;
+  // Field 4 was previously used as a simple string for the attestation document, but has been removed in favor of the
+  // more structured DeviceAttestation message below. This field number is now reserved to prevent reuse and potential
+  // confusion in the future.
+  reserved 4;
+  optional DeviceAttestation attestation = 5;
+}
+
+message DeviceAttestation {
+  string challenge_token = 1;
+  oneof format {
+    AppleAppAttestation apple = 2;
+    AndroidKeyAttestation android = 3;
+  }
+}
+
+message AppleAppAttestation {
+  bytes attestation_object = 1;
+}
+
+message AndroidKeyAttestation {
+  bytes certificate_chain = 1;
 }
 
 message StartEmailVerificationResponse {

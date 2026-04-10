@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.outlined.GppMaybe
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +54,7 @@ import com.sentryinteractive.opencredential.api.credential.Credential
 import com.sentryinteractive.opencredential.api.credential.CredentialFilter
 import com.sentryinteractive.opencredential.sdk.OpenCredentialSDK
 import com.sentryinteractive.opencredential.sdk.R
+import com.sentryinteractive.opencredential.sdk.Signer
 import com.sentryinteractive.opencredential.sdk.grpc.CredentialService
 import com.sentryinteractive.opencredential.sdk.grpc.OrganizationService
 import kotlinx.coroutines.Dispatchers
@@ -83,7 +86,10 @@ class CredentialSelectionActivity : ComponentActivity() {
     private lateinit var credentialService: CredentialService
     private lateinit var organizationService: OrganizationService
 
-    private var credentials by mutableStateOf<List<Credential>>(emptyList())
+    /** A credential together with the local signer that signs requests for it. */
+    private data class CredentialEntry(val signer: Signer, val credential: Credential)
+
+    private var credentialEntries by mutableStateOf<List<CredentialEntry>>(emptyList())
     private var isLoading by mutableStateOf(true)
     private var isSubmitting by mutableStateOf(false)
     private var errorMessage by mutableStateOf<String?>(null)
@@ -124,8 +130,8 @@ class CredentialSelectionActivity : ComponentActivity() {
     @Composable
     private fun CredentialSelectionScreen() {
         val scope = rememberCoroutineScope()
-        val selectionState = remember(credentials) {
-            MutableList(credentials.size) { false }.toMutableStateList()
+        val selectionState = remember(credentialEntries) {
+            MutableList(credentialEntries.size) { false }.toMutableStateList()
         }
 
         LaunchedEffect(Unit) {
@@ -170,7 +176,7 @@ class CredentialSelectionActivity : ComponentActivity() {
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            if (credentials.isEmpty()) {
+                            if (credentialEntries.isEmpty()) {
                                 Text(
                                     text = getString(R.string.oc_credentials_empty),
                                     style = MaterialTheme.typography.bodyMedium,
@@ -256,8 +262,8 @@ class CredentialSelectionActivity : ComponentActivity() {
     private fun CredentialList(selectionState: MutableList<Boolean>) {
         Column(modifier = Modifier.fillMaxWidth()) {
             HorizontalDivider()
-            credentials.forEachIndexed { index, credential ->
-                val identity = credential.identity
+            credentialEntries.forEachIndexed { index, entry ->
+                val identity = entry.credential.identity
                 val label = when {
                     identity.hasEmail() -> identity.email
                     identity.hasPhone() -> identity.phone
@@ -280,12 +286,34 @@ class CredentialSelectionActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = label,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f)
                     )
+                    AttestationIcon(attested = entry.credential.attested)
                 }
 
                 HorizontalDivider()
             }
+        }
+    }
+
+    /** Visual indicator for whether a credential's key was hardware-attested at registration. */
+    @Composable
+    private fun AttestationIcon(attested: Boolean) {
+        if (attested) {
+            Icon(
+                imageVector = Icons.Default.VerifiedUser,
+                contentDescription = "Attested",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Outlined.GppMaybe,
+                contentDescription = "Not attested",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 
@@ -356,10 +384,23 @@ class CredentialSelectionActivity : ComponentActivity() {
 
     private suspend fun loadCredentials() {
         try {
-            val response = withContext(Dispatchers.IO) {
-                credentialService.getCredentials(CredentialFilter.CREDENTIAL_FILTER_SAME_KEY)
+            val entries = withContext(Dispatchers.IO) {
+                val provider = OpenCredentialSDK.getCryptoProvider()
+                    ?: return@withContext emptyList()
+                val collected = mutableListOf<CredentialEntry>()
+                for (signer in provider.listSigners()) {
+                    try {
+                        val response = credentialService.getCredentials(signer, CredentialFilter.CREDENTIAL_FILTER_SAME_KEY)
+                        for (cred in response.credentialsList) {
+                            collected.add(CredentialEntry(signer, cred))
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to load credentials for signer", e)
+                    }
+                }
+                collected
             }
-            credentials = response.credentialsList
+            credentialEntries = entries
             isLoading = false
             hasLoadedOnce = true
             errorMessage = null
@@ -371,28 +412,28 @@ class CredentialSelectionActivity : ComponentActivity() {
     }
 
     private suspend fun onApproveClicked(selectionState: List<Boolean>) {
-        val selectedCredentialBytes = mutableListOf<ByteArray>()
-        val selectedIdentities = mutableListOf<com.sentryinteractive.opencredential.api.common.Identity>()
-
+        val selectedEntries = mutableListOf<CredentialEntry>()
         selectionState.forEachIndexed { index, selected ->
-            if (selected) {
-                val cred = credentials[index]
-                selectedCredentialBytes.add(cred.credential.toByteArray())
-                selectedIdentities.add(cred.identity)
-            }
+            if (selected) selectedEntries.add(credentialEntries[index])
         }
 
-        if (selectedCredentialBytes.isEmpty()) return
+        if (selectedEntries.isEmpty()) return
 
         val orgId = organizationId
         val code = inviteCode
+        val selectedCredentialBytes = selectedEntries.map { it.credential.credential.toByteArray() }
 
         if (orgId != null && code != null) {
             isSubmitting = true
             try {
                 withContext(Dispatchers.IO) {
-                    for (identity in selectedIdentities) {
-                        organizationService.shareCredentialWithOrganization(orgId, identity, code)
+                    for (entry in selectedEntries) {
+                        organizationService.shareCredentialWithOrganization(
+                            signer = entry.signer,
+                            organizationId = orgId,
+                            identity = entry.credential.identity,
+                            inviteCode = code
+                        )
                     }
                 }
                 isSubmitting = false

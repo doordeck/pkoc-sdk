@@ -244,6 +244,76 @@ CredentialSelectionActivity / OCCredentialSelectionView
 
 ## Breaking Changes
 
+### 0.0.7 — Multi-key `CryptoProvider` and SDK-managed credential keys (Android)
+
+The Android SDK now manages credential keys per-credential instead of per-device. Each registered identity gets its own key in AndroidKeyStore (StrongBox-preferred, TEE fallback), bound to a server-supplied attestation challenge at key-generation time. Multi-account is now safe — registering a second email no longer clobbers the first.
+
+The default behavior is fully transparent: most apps should call `OpenCredentialSDK.initialize(context)` and never think about keys or attestation again. Custom `CryptoProvider` overrides remain available for HSM, AWS KMS, hardware token, or other non-AndroidKeyStore backends.
+
+**Android — initialization**
+
+```kotlin
+// Before
+OpenCredentialSDK.initialize(object : OpenCredentialSDK.CryptoProvider {
+    override fun getPublicKeyDer(): ByteArray? = /* one device key */
+    override fun sign(data: ByteArray): ByteArray? = /* sign with one device key */
+})
+
+// After (recommended): SDK manages credential keys for you
+OpenCredentialSDK.initialize(applicationContext)
+
+// After (advanced): bring your own multi-key provider
+OpenCredentialSDK.initialize(MyCustomCryptoProvider())
+```
+
+**Android — `CryptoProvider` interface (only relevant if you bring your own)**
+
+The single-key methods have been replaced by a `Signer`-based API where each key is represented by a `Signer` object that exposes its own public key and signing method. There are no string handles — the `Signer` instance itself *is* the identifier.
+
+```kotlin
+// Before
+interface CryptoProvider {
+    fun getPublicKeyDer(): ByteArray?
+    fun sign(data: ByteArray): ByteArray?
+}
+
+// After
+interface CryptoProvider {
+    fun listSigners(): List<Signer>
+    fun createSigner(attestationChallenge: ByteArray? = null): AttestedSigner?
+    fun forget(signer: Signer): Boolean
+}
+
+interface Signer {
+    val publicKeyDer: ByteArray
+    fun sign(data: ByteArray): ByteArray?
+}
+
+data class AttestedSigner(
+    val signer: Signer,
+    val attestationDocument: ByteArray? = null
+)
+```
+
+A typical custom implementation keeps its per-key state (alias, handle, keychain index, whatever) inside its own private `Signer` class and returns instances of that class from `listSigners()` / `createSigner()`.
+
+**Android — `OpenCredentialSDK.deleteCredentials`**
+
+```kotlin
+// Before
+OpenCredentialSDK.deleteCredentials(identity, keyThumbprint)
+
+// After — keyThumbprint parameter removed (obsolete in the multi-key model where each
+// credential already has its own key)
+OpenCredentialSDK.deleteCredentials(identity)
+```
+
+**Android — `OpenCredentialSDK.getKeyThumbprint()` removed**
+
+The method no longer exists. If you need a credential's thumbprint, compute it directly from the `Signer.publicKeyDer` of the signer you're interested in.
+
+**iOS** is unchanged in this release. iOS continues with a single device key per install; multi-account works there because iOS doesn't regenerate the key on registration. The now-removed `attestation_document: String` parameter on `OCVerificationService.startEmailVerification` is gone — iOS sends the request without it, and the server (where field 4 is now `reserved`) silently drops the old payload. Hardware attestation on iOS is not yet wired up — credentials registered from iOS will be `attested=false`.
+
 ### 0.0.6 — Typed `OCIdentity`
 
 `getIdentities()` and `deleteCredentials()` now accept/return a typed `OCIdentity` (email or phone) instead of a plain `String`. The underlying proto models `Identity` as a `oneof { email, phone }`; the previous String-based API could not express phone identities and would have silently encoded them as emails.
