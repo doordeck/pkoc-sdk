@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,6 +92,8 @@ class CredentialSelectionActivity : ComponentActivity() {
     private var organizationName: String? = null
     private var inviteCode: String? = null
 
+    private var hasLoadedOnce = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -107,6 +110,14 @@ class CredentialSelectionActivity : ComponentActivity() {
             MaterialTheme {
                 CredentialSelectionScreen()
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (hasLoadedOnce) {
+            isLoading = true
+            lifecycleScope.launch { loadCredentials() }
         }
     }
 
@@ -350,6 +361,7 @@ class CredentialSelectionActivity : ComponentActivity() {
             }
             credentials = response.credentialsList
             isLoading = false
+            hasLoadedOnce = true
             errorMessage = null
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load credentials", e)

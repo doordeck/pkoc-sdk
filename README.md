@@ -8,7 +8,7 @@ SDKs for integrating Sentry Interactive OpenCredential into Android and iOS apps
 
 - **Email verification + 2FA** — Login screen with email input and 6-digit code verification
 - **Organization consent** — Consent screen showing org details before credential sharing
-- **Credential selection** — Choose which email credentials to share with an organization
+- **Credential selection** — Choose which credentials to share with an organization
 - **gRPC-Web client** — Built-in transport with RFC 9421 HTTP Message Signatures (P-256 ECDSA)
 
 ---
@@ -239,3 +239,39 @@ CredentialSelectionActivity / OCCredentialSelectionView
 ```
 
 **gRPC-Web transport:** All API calls use gRPC-Web over HTTP/1.1 to `https://api.opencredential.sentryinteractive.com`. Requests are signed with RFC 9421 HTTP Message Signatures using the device's P-256 key pair.
+
+---
+
+## Breaking Changes
+
+### 0.0.6 — Typed `OCIdentity`
+
+`getIdentities()` and `deleteCredentials()` now accept/return a typed `OCIdentity` (email or phone) instead of a plain `String`. The underlying proto models `Identity` as a `oneof { email, phone }`; the previous String-based API could not express phone identities and would have silently encoded them as emails.
+
+**Android**
+
+```kotlin
+// Before
+val identities: List<String> = OpenCredentialSDK.getIdentities()
+OpenCredentialSDK.deleteCredentials(email = "user@example.com")
+
+// After
+val identities: List<OCIdentity> = OpenCredentialSDK.getIdentities()
+OpenCredentialSDK.deleteCredentials(identity = OCIdentity.Email("user@example.com"))
+// or, for a phone identity:
+OpenCredentialSDK.deleteCredentials(identity = OCIdentity.Phone("+15551234567"))
+```
+
+**iOS**
+
+```swift
+// Before
+let identities: [String] = try await OpenCredentialSDK.shared.getIdentities()
+try await OpenCredentialSDK.shared.deleteCredentials(email: "user@example.com")
+
+// After
+let identities: [OCIdentity] = try await OpenCredentialSDK.shared.getIdentities()
+try await OpenCredentialSDK.shared.deleteCredentials(identity: .email("user@example.com"))
+// or, for a phone identity:
+try await OpenCredentialSDK.shared.deleteCredentials(identity: .phone("+15551234567"))
+```

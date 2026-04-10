@@ -1,6 +1,12 @@
 import SwiftUI
 import OpenCredentialSDK
 
+private enum DeleteMode
+{
+    case identity
+    case identityAndKey
+}
+
 struct ContentView: View
 {
     @State private var statusMessage = "Ready"
@@ -15,6 +21,13 @@ struct ContentView: View
     @State private var pendingOrgName = ""
     @State private var pendingInviteCode = ""
 
+    @State private var identities: [OCIdentity] = []
+    @State private var hasCredentials = false
+    @State private var isLoading = false
+    @State private var showDeleteSheet = false
+    @State private var showIdentityPicker = false
+    @State private var identityPickerMode: DeleteMode = .identity
+
     var body: some View
     {
         NavigationView
@@ -22,6 +35,8 @@ struct ContentView: View
             VStack(spacing: 0)
             {
                 headerSection
+
+                deleteButton
 
                 Divider().padding(.vertical, 16)
 
@@ -34,6 +49,9 @@ struct ContentView: View
             .padding(.horizontal, 24)
             .navigationTitle("OC SDK Sample")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { checkCredentials() }
+            .sheet(isPresented: $showDeleteSheet) { deleteSheet }
+            .sheet(isPresented: $showIdentityPicker) { identityPickerSheet }
             .sheet(isPresented: $showConsent)
             {
                 OCConsentView(
@@ -49,6 +67,7 @@ struct ContentView: View
                     onCancel: {
                         showConsent = false
                         statusMessage = "Consent cancelled"
+                        checkCredentials()
                     }
                 )
             }
@@ -59,6 +78,7 @@ struct ContentView: View
                     showLogin = false
                     statusMessage = "Login successful! Select credentials to share..."
                     showCredentialSelection = true
+                    checkCredentials()
                 }
             }
             .sheet(isPresented: $showCredentialSelection)
@@ -72,6 +92,7 @@ struct ContentView: View
                         credentialCount = credentials.count
                         statusMessage = "Flow completed! \(credentials.count) credential(s) shared."
                         clearPendingOrg()
+                        checkCredentials()
                     }
                 )
             }
@@ -85,7 +106,172 @@ struct ContentView: View
         pendingInviteCode = ""
     }
 
+    // MARK: - Credentials
+
+    private func checkCredentials()
+    {
+        Task { await refreshIdentities() }
+    }
+
+    @MainActor
+    private func refreshIdentities() async
+    {
+        isLoading = true
+        defer { isLoading = false }
+        do
+        {
+            identities = try await OpenCredentialSDK.shared.getIdentities()
+            hasCredentials = !identities.isEmpty
+        }
+        catch
+        {
+            print("OC sample: getIdentities() failed: \(error)")
+        }
+    }
+
+    private func deleteCredentials(identity: OCIdentity? = nil, keyThumbprint: String? = nil)
+    {
+        isLoading = true
+        Task
+        {
+            do
+            {
+                try await OpenCredentialSDK.shared.deleteCredentials(identity: identity, keyThumbprint: keyThumbprint)
+                let remainingIds = (try? await OpenCredentialSDK.shared.getIdentities()) ?? []
+                await MainActor.run
+                {
+                    isLoading = false
+                    identities = remainingIds
+                    hasCredentials = !remainingIds.isEmpty
+                    statusMessage = "Credentials deleted"
+                }
+            }
+            catch
+            {
+                await MainActor.run
+                {
+                    isLoading = false
+                    statusMessage = "Failed to delete credentials"
+                }
+            }
+        }
+    }
+
     // MARK: - Sections
+
+    private var deleteButton: some View
+    {
+        Button
+        {
+            showDeleteSheet = true
+        }
+        label:
+        {
+            Group
+            {
+                if isLoading
+                {
+                    ProgressView()
+                }
+                else
+                {
+                    Text("Delete Credentials")
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.accentColor))
+        }
+        .disabled(!hasCredentials || isLoading)
+        .padding(.top, 16)
+    }
+
+    private var deleteSheet: some View
+    {
+        NavigationView
+        {
+            List
+            {
+                Button("Delete All")
+                {
+                    showDeleteSheet = false
+                    deleteCredentials()
+                }
+
+                Button("Delete by Identity")
+                {
+                    showDeleteSheet = false
+                    identityPickerMode = .identity
+                    showIdentityPicker = true
+                }
+
+                Button("Delete by Key (this device)")
+                {
+                    showDeleteSheet = false
+                    if let thumbprint = OpenCredentialSDK.shared.getKeyThumbprint()
+                    {
+                        deleteCredentials(keyThumbprint: thumbprint)
+                    }
+                    else
+                    {
+                        statusMessage = "No device key available; cannot delete by key."
+                    }
+                }
+
+                Button("Delete by Identity + Key")
+                {
+                    showDeleteSheet = false
+                    identityPickerMode = .identityAndKey
+                    showIdentityPicker = true
+                }
+            }
+            .navigationTitle("Delete Credentials")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar
+            {
+                ToolbarItem(placement: .cancellationAction)
+                {
+                    Button("Cancel") { showDeleteSheet = false }
+                }
+            }
+        }
+    }
+
+    private var identityPickerSheet: some View
+    {
+        NavigationView
+        {
+            List(identities, id: \.self)
+            { identity in
+                Button(identity.value)
+                {
+                    showIdentityPicker = false
+                    switch identityPickerMode
+                    {
+                        case .identity:
+                            deleteCredentials(identity: identity, keyThumbprint: nil)
+                        case .identityAndKey:
+                            guard let thumbprint = OpenCredentialSDK.shared.getKeyThumbprint() else
+                            {
+                                statusMessage = "Cannot delete by Identity + Key: no key is available on this device."
+                                return
+                            }
+                            deleteCredentials(identity: identity, keyThumbprint: thumbprint)
+                    }
+                }
+            }
+            .navigationTitle("Select Identity")
+            .navigationBarTitleDisplayMode(.inline)
+            .task { await refreshIdentities() }
+            .toolbar
+            {
+                ToolbarItem(placement: .cancellationAction)
+                {
+                    Button("Cancel") { showIdentityPicker = false }
+                }
+            }
+        }
+    }
 
     private var headerSection: some View
     {
@@ -131,7 +317,7 @@ struct ContentView: View
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
-            .disabled(inviteCodeInput.isEmpty)
+            .disabled(inviteCodeInput.isEmpty || isLoading)
         }
     }
 
