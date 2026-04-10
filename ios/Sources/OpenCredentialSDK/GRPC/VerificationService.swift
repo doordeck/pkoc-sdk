@@ -16,15 +16,13 @@ public final class OCVerificationService
     public func startEmailVerification(
         email: String,
         credential: Data,
-        credentialType: OCCredentialType,
-        attestationDocument: String
+        credentialType: OCCredentialType
     ) async throws -> OCStartEmailVerificationResponse
     {
         let body = encodeStartEmailVerificationRequest(
             email: email,
             credential: credential,
-            credentialType: credentialType,
-            attestationDocument: attestationDocument
+            credentialType: credentialType
         )
         let responseData = try await client.call(
             servicePath: servicePath,

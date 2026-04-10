@@ -139,6 +139,7 @@ public struct OCCredentialSelectionView: View
                     Text(vm.label(for: index))
                         .font(.body)
                     Spacer()
+                    attestationIcon(attested: vm.credentials[index].attested)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { vm.toggle(index: index) }
@@ -146,6 +147,27 @@ public struct OCCredentialSelectionView: View
 
                 Divider()
             }
+        }
+    }
+
+    /// Visual indicator for whether a credential's key was hardware-attested at registration.
+    /// On iOS this is currently always the unattested variant — App Attest is not wired up yet.
+    @ViewBuilder
+    private func attestationIcon(attested: Bool) -> some View
+    {
+        if attested
+        {
+            Image(systemName: "checkmark.shield.fill")
+                .foregroundColor(.green)
+                .font(.body)
+                .accessibilityLabel("Attested")
+        }
+        else
+        {
+            Image(systemName: "shield.slash")
+                .foregroundColor(.secondary)
+                .font(.body)
+                .accessibilityLabel("Not attested")
         }
     }
 

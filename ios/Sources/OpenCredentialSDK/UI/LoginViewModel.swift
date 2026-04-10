@@ -41,8 +41,7 @@ internal final class OCLoginViewModel: ObservableObject
                 let response = try await OCVerificationService.shared.startEmailVerification(
                     email: trimmed,
                     credential: derKey,
-                    credentialType: .p256,
-                    attestationDocument: "TBD"
+                    credentialType: .p256
                 )
                 verificationToken = response.verificationToken
 

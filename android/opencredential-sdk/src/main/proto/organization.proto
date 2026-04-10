@@ -1,7 +1,10 @@
 syntax = "proto3";
+
 package com.sentryinteractive.opencredential.organization.v1alpha;
+
 import "google/protobuf/empty.proto";
 import "types.proto";
+
 option java_multiple_files = true;
 option java_package = "com.sentryinteractive.opencredential.api.organization";
 option java_outer_classname = "OrganizationProtoV1Alpha";
