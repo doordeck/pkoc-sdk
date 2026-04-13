@@ -22,8 +22,12 @@ import kotlin.concurrent.thread
  * [OpenCredentialSDK.CryptoProvider.listSigners] and [OpenCredentialSDK.CryptoProvider.createSigner].
  */
 interface Signer {
-    /** DER-encoded (X.509 SubjectPublicKeyInfo) public key. */
-    val publicKeyDer: ByteArray
+    /**
+     * DER-encoded (X.509 SubjectPublicKeyInfo) public key, or `null` if the underlying key
+     * material is unavailable (e.g. the AndroidKeyStore alias has been deleted or the key
+     * store is in an inconsistent state, old devices, etc).
+     */
+    val publicKeyDer: ByteArray?
 
     /** Sign [data] with this credential's private key; returns a DER-encoded ECDSA signature. */
     fun sign(data: ByteArray): ByteArray?
@@ -230,11 +234,6 @@ object OpenCredentialSDK {
         return getIdentities().isNotEmpty()
     }
 
-    /**
-     * Returns the list of identities (emails/phones) registered on this device, aggregated
-     * across all credential keys this provider manages. Order is not guaranteed.
-     * This is a blocking network call — run it off the main thread.
-     */
     /**
      * Returns a display-oriented summary of every credential registered on this device,
      * aggregated across all credential keys this provider manages. Self-prunes signers whose

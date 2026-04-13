@@ -69,8 +69,15 @@ class LoginActivity : ComponentActivity() {
     private var codeSent by mutableStateOf(false)
     private var verificationToken: String? = null
 
-    /** Signer minted in onSendCode; used to sign onVerify. */
-    private var pendingSigner: Signer? = null
+    /**
+     * Signer minted in onSendCode; used to sign onVerify. `AtomicReference` because
+     * `onDestroy()` / back-press cleanup may run concurrently with `onVerify()` (which
+     * suspends across `Dispatchers.IO`). Whoever calls `getAndSet(null)` first "claims"
+     * the signer; later callers see `null` and no-op. Prevents double-forget / late-forget
+     * races where `onDestroy` could delete the AndroidKeyStore alias while `onVerify` is
+     * still in flight.
+     */
+    private val pendingSigner = java.util.concurrent.atomic.AtomicReference<Signer?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -286,10 +293,13 @@ class LoginActivity : ComponentActivity() {
                             .build()
                     }
 
+                    val credentialDer = attested.signer.publicKeyDer
+                        ?: throw IllegalStateException("Newly minted signer has no public key — cannot register.")
+
                     val resp = verificationService.startEmailVerification(
                         signer = attested.signer,
                         email = emailText,
-                        credential = attested.signer.publicKeyDer,
+                        credential = credentialDer,
                         credentialType = CredentialType.CREDENTIAL_TYPE_P256,
                         attestation = attestation
                     )
@@ -301,7 +311,7 @@ class LoginActivity : ComponentActivity() {
                 }
             }
 
-            pendingSigner = signer
+            pendingSigner.set(signer)
             verificationToken = response.verificationToken
             credentialStore.saveEmail(emailText)
             codeSent = true
@@ -327,7 +337,10 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
-        val signer = pendingSigner
+        // Atomically claim the pending signer. If `forgetPendingSigner()` (called from
+        // onDestroy / back-press) runs concurrently, whichever call reaches `getAndSet`
+        // first wins; the other sees `null` and no-ops.
+        val signer = pendingSigner.getAndSet(null)
         if (signer == null) {
             errorMessage = getString(R.string.oc_error_no_token)
             return
@@ -347,7 +360,6 @@ class LoginActivity : ComponentActivity() {
             if (!confirmed) {
                 Log.w(TAG, "Signer confirm failed after successful registration")
             }
-            pendingSigner = null
 
             isLoading = false
 
@@ -356,20 +368,25 @@ class LoginActivity : ComponentActivity() {
             finish()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to complete verification", e)
-            // Roll back the uncommitted signer so it doesn't become an orphan.
-            forgetPendingSigner()
+            // Roll back the signer we just claimed — it's still uncommitted server-side.
+            try {
+                OpenCredentialSDK.getCryptoProvider()?.forget(signer)
+            } catch (forgetError: Exception) {
+                Log.w(TAG, "Failed to forget signer after verification failure", forgetError)
+            }
             isLoading = false
             errorMessage = getString(R.string.oc_error_verify_code)
         }
     }
 
     /**
-     * Delete the [pendingSigner] (if any) and clear the field. Idempotent and safe from any
-     * thread — used by failure paths and lifecycle teardown to prevent orphans.
+     * Atomically claim and delete the [pendingSigner] (if any). Idempotent and thread-safe:
+     * `getAndSet(null)` ensures only the first caller walks away with the signer; concurrent
+     * or subsequent calls see `null` and no-op. Used by failure paths and lifecycle teardown
+     * to prevent orphaned AndroidKeyStore aliases.
      */
     private fun forgetPendingSigner() {
-        val signer = pendingSigner ?: return
-        pendingSigner = null
+        val signer = pendingSigner.getAndSet(null) ?: return
         try {
             OpenCredentialSDK.getCryptoProvider()?.forget(signer)
         } catch (e: Exception) {

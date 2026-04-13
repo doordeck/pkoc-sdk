@@ -79,8 +79,7 @@ class GrpcWebClient private constructor() {
         authority: String,
         signer: Signer
     ) {
-        val publicKeyDer = signer.publicKeyDer
-        if (publicKeyDer.isEmpty()) return
+        val publicKeyDer = signer.publicKeyDer ?: return
 
         val bodySha256 = MessageDigest.getInstance("SHA-256").digest(body)
         val contentDigest = "sha-256=:${base64(bodySha256)}:"

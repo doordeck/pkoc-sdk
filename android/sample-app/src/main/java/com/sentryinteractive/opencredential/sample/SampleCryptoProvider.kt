@@ -131,7 +131,7 @@ class SampleCryptoProvider(context: Context) : OpenCredentialSDK.CryptoProvider 
         return try {
             val current = prefs.getStringSet(KEY_ALIASES, emptySet())?.toMutableSet() ?: mutableSetOf()
             current.add(alias)
-            prefs.edit().putStringSet(KEY_ALIASES, current).apply()
+            prefs.edit().putStringSet(KEY_ALIASES, current).commit()
             Log.i(TAG, "Confirmed signer $alias")
             true
         } catch (e: Exception) {
@@ -146,7 +146,7 @@ class SampleCryptoProvider(context: Context) : OpenCredentialSDK.CryptoProvider 
             try { androidKeyStore().deleteEntry(alias) } catch (_: Exception) {}
             val current = prefs.getStringSet(KEY_ALIASES, emptySet())?.toMutableSet() ?: mutableSetOf()
             current.remove(alias)
-            prefs.edit().putStringSet(KEY_ALIASES, current).apply()
+            prefs.edit().putStringSet(KEY_ALIASES, current).commit()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to forget signer $alias", e)
@@ -167,12 +167,12 @@ class SampleCryptoProvider(context: Context) : OpenCredentialSDK.CryptoProvider 
  */
 private class SampleSigner(internal val alias: String) : Signer {
 
-    override val publicKeyDer: ByteArray
+    override val publicKeyDer: ByteArray?
         get() = try {
             val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            ks.getCertificate(alias)?.publicKey?.encoded ?: ByteArray(0)
+            ks.getCertificate(alias)?.publicKey?.encoded
         } catch (e: Exception) {
-            ByteArray(0)
+            null
         }
 
     override fun sign(data: ByteArray): ByteArray? {

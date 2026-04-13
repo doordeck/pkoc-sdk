@@ -166,7 +166,7 @@ struct ContentView: View
             showDeleteSheet = true
         }
         label:
-        {//2a87c473-da2f-4ac2-81ac-fb067396a458
+        {
             Group
             {
                 if isLoading
