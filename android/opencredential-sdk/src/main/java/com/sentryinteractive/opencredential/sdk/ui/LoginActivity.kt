@@ -47,6 +47,7 @@ import com.sentryinteractive.opencredential.sdk.grpc.VerificationService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Login activity that handles email verification and 2FA code entry.
@@ -77,7 +78,7 @@ class LoginActivity : ComponentActivity() {
      * races where `onDestroy` could delete the AndroidKeyStore alias while `onVerify` is
      * still in flight.
      */
-    private val pendingSigner = java.util.concurrent.atomic.AtomicReference<Signer?>(null)
+    private val pendingSigner = AtomicReference<Signer?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
