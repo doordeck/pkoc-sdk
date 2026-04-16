@@ -1,11 +1,15 @@
 package com.sentryinteractive.opencredential.sample
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,12 +19,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.outlined.GppMaybe
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -31,16 +39,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sentryinteractive.opencredential.sdk.OCCredentialInfo
 import com.sentryinteractive.opencredential.sdk.OCIdentity
 import com.sentryinteractive.opencredential.sdk.OpenCredentialSDK
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.concurrent.thread
 
 /**
@@ -62,10 +75,15 @@ class MainActivity : ComponentActivity() {
     private var linkInput by mutableStateOf("")
     private var credentialCount by mutableIntStateOf(0)
     private var hasCredentials by mutableStateOf(false)
-    private var identities by mutableStateOf(emptyList<OCIdentity>())
+    private var credentialInfos by mutableStateOf(emptyList<OCCredentialInfo>())
     private var isLoading by mutableStateOf(false)
     private var showDeleteSheet by mutableStateOf(false)
+    private var showCredentialsSheet by mutableStateOf(false)
     private var showIdentityPickerFor by mutableStateOf<String?>(null) // "identity" or "identity+key"
+
+    /** Convenience accessor for the picker — derives identities from the cached credential infos. */
+    private val identities: List<OCIdentity>
+        get() = credentialInfos.map { it.identity }
 
     private var pendingOrgId: String? = null
     private var pendingOrgName: String? = null
@@ -93,7 +111,16 @@ class MainActivity : ComponentActivity() {
     private fun MainScreen() {
         Scaffold(
             topBar = {
-                TopAppBar(title = { Text("OC SDK Sample") })
+                TopAppBar(
+                    title = { Text("OC SDK Sample") },
+                    actions = {
+                        IconButton(onClick = {
+                            startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                        }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    }
+                )
             }
         ) { innerPadding ->
             Column(
@@ -140,18 +167,34 @@ class MainActivity : ComponentActivity() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedButton(
-                    onClick = { showDeleteSheet = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    enabled = hasCredentials && !isLoading,
-                    shape = RoundedCornerShape(10.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text("Delete Credentials")
+                    OutlinedButton(
+                        onClick = { showDeleteSheet = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        enabled = hasCredentials && !isLoading,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("Delete")
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { showCredentialsSheet = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        enabled = hasCredentials && !isLoading,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("View")
                     }
                 }
 
@@ -226,8 +269,106 @@ class MainActivity : ComponentActivity() {
             DeleteBottomSheet()
         }
 
+        if (showCredentialsSheet) {
+            CredentialsListSheet()
+        }
+
         if (showIdentityPickerFor != null) {
             IdentityPickerSheet()
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun CredentialsListSheet() {
+        val sheetState = rememberModalBottomSheetState()
+
+        // Local state — independent of MainActivity's cached credentialInfos. Every time the
+        // sheet opens we do a fresh fetch so the list is always current, never stale.
+        var sheetLoading by remember { mutableStateOf(true) }
+        var sheetError by remember { mutableStateOf<String?>(null) }
+        var sheetCredentials by remember { mutableStateOf<List<OCCredentialInfo>>(emptyList()) }
+
+        LaunchedEffect(Unit) {
+            sheetLoading = true
+            sheetError = null
+            try {
+                val fetched = withContext(Dispatchers.IO) {
+                    OpenCredentialSDK.getCredentialDetails()
+                }
+                sheetCredentials = fetched
+            } catch (e: Exception) {
+                sheetError = "Failed to load credentials: ${e.message}"
+            } finally {
+                sheetLoading = false
+            }
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { showCredentialsSheet = false },
+            sheetState = sheetState
+        ) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                Text(
+                    text = "Your Credentials",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                when {
+                    sheetLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    sheetError != null -> {
+                        Text(
+                            text = sheetError!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    sheetCredentials.isEmpty() -> {
+                        Text(
+                            text = "No credentials registered on this device.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    else -> {
+                        sheetCredentials.forEach { info ->
+                            ListItem(
+                                headlineContent = { Text(info.identity.value) },
+                                supportingContent = {
+                                    Text(if (info.attested) "Attested" else "Not attested")
+                                },
+                                leadingContent = {
+                                    if (info.attested) {
+                                        Icon(
+                                            imageVector = Icons.Default.VerifiedUser,
+                                            contentDescription = "Attested",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Outlined.GppMaybe,
+                                            contentDescription = "Not attested",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -251,40 +392,16 @@ class MainActivity : ComponentActivity() {
                     supportingContent = { Text("Remove every credential across all identities") },
                     modifier = Modifier.clickable {
                         showDeleteSheet = false
-                        deleteCredentials(identity = null, keyThumbprint = null)
+                        deleteCredentials(identity = null)
                     }
                 )
 
                 ListItem(
                     headlineContent = { Text("Delete by Identity") },
-                    supportingContent = { Text("Remove all keys for a single email") },
+                    supportingContent = { Text("Remove the credential for a specific email") },
                     modifier = Modifier.clickable {
                         showDeleteSheet = false
                         showIdentityPickerFor = "identity"
-                    }
-                )
-
-                ListItem(
-                    headlineContent = { Text("Delete by Key (this device)") },
-                    supportingContent = { Text("Remove this device's key across all identities") },
-                    modifier = Modifier.clickable {
-                        showDeleteSheet = false
-                        val thumbprint = OpenCredentialSDK.getKeyThumbprint()
-                        if (thumbprint != null) {
-                            deleteCredentials(identity = null, keyThumbprint = thumbprint)
-                        } else {
-                            Log.w(TAG, "Delete by Key requested, but key thumbprint is null; aborting to avoid deleting all credentials.")
-                            statusText = "No device key available; cannot delete by key."
-                        }
-                    }
-                )
-
-                ListItem(
-                    headlineContent = { Text("Delete by Identity + Key") },
-                    supportingContent = { Text("Remove exactly one credential for this device") },
-                    modifier = Modifier.clickable {
-                        showDeleteSheet = false
-                        showIdentityPickerFor = "identity+key"
                     }
                 )
             }
@@ -295,7 +412,6 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun IdentityPickerSheet() {
         val sheetState = rememberModalBottomSheetState()
-        val mode = showIdentityPickerFor
         ModalBottomSheet(
             onDismissRequest = { showIdentityPickerFor = null },
             sheetState = sheetState
@@ -312,8 +428,7 @@ class MainActivity : ComponentActivity() {
                         headlineContent = { Text(identity.value) },
                         modifier = Modifier.clickable {
                             showIdentityPickerFor = null
-                            val thumbprint = if (mode == "identity+key") OpenCredentialSDK.getKeyThumbprint() else null
-                            deleteCredentials(identity = identity, keyThumbprint = thumbprint)
+                            deleteCredentials(identity = identity)
                         }
                     )
                 }
@@ -368,16 +483,20 @@ class MainActivity : ComponentActivity() {
         })
     }
 
-    private fun deleteCredentials(identity: OCIdentity? = null, keyThumbprint: String? = null) {
+    private fun deleteCredentials(identity: OCIdentity? = null) {
         isLoading = true
         thread {
             try {
-                OpenCredentialSDK.deleteCredentials(identity, keyThumbprint)
-                val remainingIds = try { OpenCredentialSDK.getIdentities() } catch (_: Exception) { emptyList() }
+                OpenCredentialSDK.deleteCredentials(identity)
+                val remaining = try {
+                    OpenCredentialSDK.getCredentialDetails()
+                } catch (_: Exception) {
+                    emptyList()
+                }
                 runOnUiThread {
                     isLoading = false
-                    identities = remainingIds
-                    hasCredentials = remainingIds.isNotEmpty()
+                    credentialInfos = remaining
+                    hasCredentials = remaining.isNotEmpty()
                     statusText = "Credentials deleted"
                 }
             } catch (e: Exception) {
@@ -393,10 +512,10 @@ class MainActivity : ComponentActivity() {
     private fun checkCredentials() {
         thread {
             try {
-                val ids = OpenCredentialSDK.getIdentities()
+                val infos = OpenCredentialSDK.getCredentialDetails()
                 runOnUiThread {
-                    identities = ids
-                    hasCredentials = ids.isNotEmpty()
+                    credentialInfos = infos
+                    hasCredentials = infos.isNotEmpty()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to check credentials", e)

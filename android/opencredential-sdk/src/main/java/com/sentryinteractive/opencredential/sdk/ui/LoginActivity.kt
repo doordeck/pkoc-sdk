@@ -35,14 +35,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.google.protobuf.ByteString
 import com.sentryinteractive.opencredential.api.common.CredentialType
+import com.sentryinteractive.opencredential.api.verification.AndroidKeyAttestation
+import com.sentryinteractive.opencredential.api.verification.DeviceAttestation
 import com.sentryinteractive.opencredential.sdk.CredentialStore
 import com.sentryinteractive.opencredential.sdk.OpenCredentialSDK
 import com.sentryinteractive.opencredential.sdk.R
+import com.sentryinteractive.opencredential.sdk.Signer
 import com.sentryinteractive.opencredential.sdk.grpc.VerificationService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Login activity that handles email verification and 2FA code entry.
@@ -65,10 +70,24 @@ class LoginActivity : ComponentActivity() {
     private var codeSent by mutableStateOf(false)
     private var verificationToken: String? = null
 
+    /**
+     * Signer minted in onSendCode; used to sign onVerify. `AtomicReference` because
+     * `onDestroy()` / back-press cleanup may run concurrently with `onVerify()` (which
+     * suspends across `Dispatchers.IO`). Whoever calls `getAndSet(null)` first "claims"
+     * the signer; later callers see `null` and no-op. Prevents double-forget / late-forget
+     * races where `onDestroy` could delete the AndroidKeyStore alias while `onVerify` is
+     * still in flight.
+     */
+    private val pendingSigner = AtomicReference<Signer?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        onBackPressedDispatcher.addCallback(this) { OpenCredentialSDK.getCallback()?.onCancelled(); finish() }
+        onBackPressedDispatcher.addCallback(this) {
+            forgetPendingSigner()
+            OpenCredentialSDK.getCallback()?.onCancelled()
+            finish()
+        }
 
         credentialStore = CredentialStore(this)
         verificationService = VerificationService()
@@ -244,24 +263,56 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
+        // If a previous attempt left an uncommitted signer behind, throw it away first.
+        forgetPendingSigner()
+
         isLoading = true
         errorMessage = null
 
         try {
-            val response = withContext(Dispatchers.IO) {
+            val (signer, response) = withContext(Dispatchers.IO) {
                 val provider = OpenCredentialSDK.getCryptoProvider()
                     ?: throw IllegalStateException("CryptoProvider not initialized. Call OpenCredentialSDK.initialize() first.")
-                val publicKey = provider.getPublicKeyDer()
-                    ?: throw IllegalStateException("Public key unavailable from CryptoProvider.")
 
-                verificationService.startEmailVerification(
-                    emailText,
-                    publicKey,
-                    CredentialType.CREDENTIAL_TYPE_P256,
-                    "TBD" // lol
-                )
+                // Bootstrap: fetch attestation challenge anonymously, then mint a fresh credential
+                // signer bound to it. The CryptoProvider populates attestationDocument when its
+                // backend supports hardware attestation; otherwise the credential registers as
+                // attested=false (server-side soft-fail).
+                val challenge = verificationService.getAttestationChallenge()
+                val attested = provider.createSigner(challenge.challenge.toByteArray())
+                    ?: throw IllegalStateException("Failed to create credential signer.")
+
+                try {
+                    val attestation: DeviceAttestation? = attested.attestationDocument?.let { certChain ->
+                        DeviceAttestation.newBuilder()
+                            .setChallengeToken(challenge.challengeToken)
+                            .setAndroid(
+                                AndroidKeyAttestation.newBuilder()
+                                    .setCertificateChain(ByteString.copyFrom(certChain))
+                                    .build()
+                            )
+                            .build()
+                    }
+
+                    val credentialDer = attested.signer.publicKeyDer
+                        ?: throw IllegalStateException("Newly minted signer has no public key — cannot register.")
+
+                    val resp = verificationService.startEmailVerification(
+                        signer = attested.signer,
+                        email = emailText,
+                        credential = credentialDer,
+                        credentialType = CredentialType.CREDENTIAL_TYPE_P256,
+                        attestation = attestation
+                    )
+                    attested.signer to resp
+                } catch (e: Exception) {
+                    // Roll back the uncommitted signer so it doesn't become an orphan.
+                    provider.forget(attested.signer)
+                    throw e
+                }
             }
 
+            pendingSigner.set(signer)
             verificationToken = response.verificationToken
             credentialStore.saveEmail(emailText)
             codeSent = true
@@ -287,12 +338,28 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
+        // Atomically claim the pending signer. If `forgetPendingSigner()` (called from
+        // onDestroy / back-press) runs concurrently, whichever call reaches `getAndSet`
+        // first wins; the other sees `null` and no-ops.
+        val signer = pendingSigner.getAndSet(null)
+        if (signer == null) {
+            errorMessage = getString(R.string.oc_error_no_token)
+            return
+        }
+
         isLoading = true
         errorMessage = null
 
         try {
             withContext(Dispatchers.IO) {
-                verificationService.completeEmailVerification(token, codeText)
+                verificationService.completeEmailVerification(signer, token, codeText)
+            }
+
+            // Server-side credential is now real. Promote the signer from "uncommitted" to
+            // "managed" so subsequent listSigners() picks it up.
+            val confirmed = OpenCredentialSDK.getCryptoProvider()?.confirm(signer) ?: false
+            if (!confirmed) {
+                Log.w(TAG, "Signer confirm failed after successful registration")
             }
 
             isLoading = false
@@ -302,9 +369,37 @@ class LoginActivity : ComponentActivity() {
             finish()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to complete verification", e)
+            // Roll back the signer we just claimed — it's still uncommitted server-side.
+            try {
+                OpenCredentialSDK.getCryptoProvider()?.forget(signer)
+            } catch (forgetError: Exception) {
+                Log.w(TAG, "Failed to forget signer after verification failure", forgetError)
+            }
             isLoading = false
             errorMessage = getString(R.string.oc_error_verify_code)
         }
+    }
+
+    /**
+     * Atomically claim and delete the [pendingSigner] (if any). Idempotent and thread-safe:
+     * `getAndSet(null)` ensures only the first caller walks away with the signer; concurrent
+     * or subsequent calls see `null` and no-op. Used by failure paths and lifecycle teardown
+     * to prevent orphaned AndroidKeyStore aliases.
+     */
+    private fun forgetPendingSigner() {
+        val signer = pendingSigner.getAndSet(null) ?: return
+        try {
+            OpenCredentialSDK.getCryptoProvider()?.forget(signer)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to forget pending signer", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // If the activity is being destroyed before onVerify successfully confirmed the
+        // signer, the signer is uncommitted and would otherwise be an orphan. Clean it up.
+        forgetPendingSigner()
     }
 
 }

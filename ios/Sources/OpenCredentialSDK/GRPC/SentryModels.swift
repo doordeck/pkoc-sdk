@@ -78,6 +78,9 @@ public struct OCCredential
     public var identity: OCIdentity?
     public var credential: Data = Data()
     public var credentialType: OCCredentialType = .unspecified
+    /// Whether the credential's key was attested by hardware at registration time.
+    /// Always `false` on iOS for now — App Attest is not yet wired up.
+    public var attested: Bool = false
 
     public var credentialHex: String
     {
@@ -239,15 +242,16 @@ internal final class ProtoDecoder
 internal func encodeStartEmailVerificationRequest(
     email: String,
     credential: Data,
-    credentialType: OCCredentialType,
-    attestationDocument: String
+    credentialType: OCCredentialType
 ) -> Data
 {
     var enc = ProtoEncoder()
     enc.encodeString(1, email)
     enc.encodeBytes(2, credential)
     enc.encodeEnum(3, credentialType.rawValue)
-    enc.encodeString(4, attestationDocument)
+    // Field 4 (attestation_document) is reserved server-side. Field 5 (DeviceAttestation)
+    // is not yet wired on iOS — credentials register as attested=false.
+    // soft-fail
     return enc.build()
 }
 
@@ -372,6 +376,11 @@ private func decodeOCCredential(_ data: Data) -> OCCredential
                 if let v = dec.readVarint()
                 {
                     cred.credentialType = OCCredentialType(rawValue: Int(v)) ?? .unspecified
+                }
+            case 5:
+                if let v = dec.readVarint()
+                {
+                    cred.attested = v != 0
                 }
             default: dec.skip(wireType: wireType)
         }

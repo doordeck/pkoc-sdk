@@ -1,16 +1,22 @@
 package com.sentryinteractive.opencredential.sdk.grpc
 
+import android.util.Base64
+import android.util.Log
 import com.google.protobuf.MessageLite
+import com.sentryinteractive.opencredential.sdk.Signer
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 
 class GrpcWebClient private constructor() {
 
     companion object {
+        private const val TAG = "GrpcWebClient"
         private const val BASE_URL = "https://api.opencredential.sentryinteractive.com"
         private val GRPC_WEB_MEDIA_TYPE = "application/grpc-web".toMediaType()
 
@@ -25,19 +31,33 @@ class GrpcWebClient private constructor() {
         }
     }
 
-    private val httpClient: OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(GrpcWebInterceptor())
-        .build()
+    private val httpClient: OkHttpClient = OkHttpClient.Builder().build()
 
+    /**
+     * Make a gRPC-Web call. If [signer] is non-null, the request is signed with that signer's
+     * key via RFC 9421 HTTP Message Signatures. If null, the request goes out unsigned
+     * (anonymous bootstrap).
+     */
     @Throws(IOException::class, GrpcWebException::class)
-    fun call(servicePath: String, method: String, request: MessageLite): ByteArray {
+    fun call(servicePath: String, method: String, request: MessageLite, signer: Signer? = null): ByteArray {
         val body = frameGrpcWeb(request)
-        val httpRequest = Request.Builder()
-            .url("$BASE_URL$servicePath/$method")
+        val url = ("$BASE_URL$servicePath/$method").toHttpUrl()
+
+        val builder = Request.Builder()
+            .url(url)
             .post(body.toRequestBody(GRPC_WEB_MEDIA_TYPE))
             .addHeader("Accept", "application/grpc-web")
             .addHeader("X-Grpc-Web", "1")
-            .build()
+
+        if (signer != null) {
+            try {
+                signRequest(builder, body, url.encodedPath, url.host, signer)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to sign request, proceeding unsigned", e)
+            }
+        }
+
+        val httpRequest = builder.build()
 
         httpClient.newCall(httpRequest).execute().use { response ->
             val responseBytes = response.body.bytes()
@@ -46,6 +66,46 @@ class GrpcWebClient private constructor() {
             if (!response.isSuccessful) throw IOException("HTTP error: ${response.code}")
             return responseBytes
         }
+    }
+
+    /**
+     * Adds RFC 9421 HTTP Message Signature headers to [builder] for a request whose body is
+     * [body], whose URL path is [path] and authority is [authority], signed by [signer].
+     */
+    private fun signRequest(
+        builder: Request.Builder,
+        body: ByteArray,
+        path: String,
+        authority: String,
+        signer: Signer
+    ) {
+        val publicKeyDer = signer.publicKeyDer ?: return
+
+        val bodySha256 = MessageDigest.getInstance("SHA-256").digest(body)
+        val contentDigest = "sha-256=:${base64(bodySha256)}:"
+
+        val thumbprintBytes = MessageDigest.getInstance("SHA-256").digest(publicKeyDer)
+        val keyId = base64Url(thumbprintBytes)
+
+        val created = System.currentTimeMillis() / 1000
+
+        val sigInputValue = "(\"@method\" \"@path\" \"@authority\" \"content-digest\")" +
+                ";alg=\"ecdsa-p256-sha256\"" +
+                ";keyid=\"$keyId\"" +
+                ";created=$created"
+
+        val sigBase = "\"@method\": POST\n" +
+                "\"@path\": $path\n" +
+                "\"@authority\": $authority\n" +
+                "\"content-digest\": $contentDigest\n" +
+                "\"@signature-params\": $sigInputValue"
+
+        val signature = signer.sign(sigBase.toByteArray()) ?: return
+
+        builder
+            .header("content-digest", contentDigest)
+            .header("signature-input", "sig1=$sigInputValue")
+            .header("signature", "sig1=:${base64(signature)}:")
     }
 
     fun frameGrpcWeb(message: MessageLite): ByteArray {
@@ -87,7 +147,27 @@ class GrpcWebClient private constructor() {
             }
             offset += 5 + len
         }
-        return if (response.isSuccessful) 0 else 2
+        if (response.isSuccessful) return 0
+        // Server returned an HTTP error before the gRPC handler could attach a status. Map
+        // common HTTP status codes to their gRPC equivalents (per the gRPC-Web spec) so
+        // callers get a meaningful gRPC status instead of UNKNOWN.
+        return httpStatusToGrpcStatus(response.code)
+    }
+
+    /**
+     * Map an HTTP status code to a gRPC status code per the gRPC over HTTP/2 spec
+     * (https://github.com/grpc/grpc/blob/master/doc/http-grpc-status-mapping.md).
+     */
+    private fun httpStatusToGrpcStatus(httpStatus: Int): Int {
+        return when (httpStatus) {
+            400 -> 3   // INVALID_ARGUMENT
+            401 -> 16  // UNAUTHENTICATED
+            403 -> 7   // PERMISSION_DENIED
+            404 -> 5   // NOT_FOUND
+            429 -> 8   // RESOURCE_EXHAUSTED
+            502, 503, 504 -> 14  // UNAVAILABLE
+            else -> 2  // UNKNOWN
+        }
     }
 
     private fun extractGrpcMessage(response: okhttp3.Response, responseBytes: ByteArray): String {
@@ -108,5 +188,13 @@ class GrpcWebClient private constructor() {
             offset += 5 + len
         }
         return ""
+    }
+
+    private fun base64(data: ByteArray): String {
+        return Base64.encodeToString(data, Base64.NO_WRAP)
+    }
+
+    private fun base64Url(data: ByteArray): String {
+        return Base64.encodeToString(data, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
 }

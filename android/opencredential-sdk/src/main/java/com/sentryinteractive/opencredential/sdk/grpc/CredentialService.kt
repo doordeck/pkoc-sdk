@@ -6,6 +6,7 @@ import com.sentryinteractive.opencredential.api.credential.DeleteCredentialsRequ
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsRequest
 import com.sentryinteractive.opencredential.api.credential.GetCredentialsResponse
 import com.sentryinteractive.opencredential.sdk.OCIdentity
+import com.sentryinteractive.opencredential.sdk.Signer
 import java.io.IOException
 
 /**
@@ -21,30 +22,27 @@ class CredentialService {
     private val client: GrpcWebClient = GrpcWebClient.getInstance()
 
     @Throws(IOException::class, GrpcWebException::class)
-    fun getCredentials(filter: CredentialFilter): GetCredentialsResponse {
+    fun getCredentials(signer: Signer, filter: CredentialFilter): GetCredentialsResponse {
         val request = GetCredentialsRequest.newBuilder()
             .setFilter(filter)
             .build()
 
-        val responseBytes = client.call(SERVICE_PATH, "GetCredentials", request)
+        val responseBytes = client.call(SERVICE_PATH, "GetCredentials", request, signer)
         val msgBytes = client.parseGrpcWebDataFrame(responseBytes)
         return GetCredentialsResponse.parseFrom(msgBytes)
     }
 
     @Throws(IOException::class, GrpcWebException::class)
-    fun deleteCredentials(identity: OCIdentity? = null, keyThumbprint: String? = null) {
+    fun deleteCredentials(signer: Signer, identity: OCIdentity? = null) {
         val builder = DeleteCredentialsRequest.newBuilder()
         if (identity != null) {
             builder.setIdentity(identity.toProto())
         }
-        if (keyThumbprint != null) {
-            builder.setKeyThumbprint(keyThumbprint)
-        }
-        client.call(SERVICE_PATH, "DeleteCredentials", builder.build())
+        client.call(SERVICE_PATH, "DeleteCredentials", builder.build(), signer)
     }
 
     @Throws(IOException::class, GrpcWebException::class)
-    fun verifyCredential() {
-        client.call(SERVICE_PATH, "VerifyCredential", Empty.getDefaultInstance())
+    fun verifyCredential(signer: Signer) {
+        client.call(SERVICE_PATH, "VerifyCredential", Empty.getDefaultInstance(), signer)
     }
 }

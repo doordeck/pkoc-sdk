@@ -1,5 +1,7 @@
 syntax = "proto3";
+
 package com.sentryinteractive.opencredential.common.v1alpha;
+
 option java_multiple_files = true;
 option java_package = "com.sentryinteractive.opencredential.api.common";
 option java_outer_classname = "TypesProtoV1Alpha";
@@ -18,7 +20,9 @@ enum CredentialType {
 
 message Identity {
   oneof identity {
+    // Normalized email address (e.g. info@sentryinteractive.com)
     string email = 1;
+    // E-164 formatted phone number (e.g. +1234567890)
     string phone = 2;
   }
 }
