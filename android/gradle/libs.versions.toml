@@ -1,6 +1,6 @@
 [versions]
-agp = "9.1.0"
-kotlin = "2.3.10"
+agp = "9.1.1"
+kotlin = "2.3.20"
 protobufPlugin = "0.9.6"
 grpc = "1.80.0"
 protobufLib = "4.34.1"
