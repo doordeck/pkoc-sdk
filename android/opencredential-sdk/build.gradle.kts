@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.LibraryExtension
 import com.google.protobuf.gradle.id
 
 plugins {
@@ -7,7 +8,7 @@ plugins {
     `maven-publish`
 }
 
-android {
+configure<LibraryExtension> {
     namespace = "com.sentryinteractive.opencredential.sdk"
     compileSdk = 36
 
@@ -27,6 +28,12 @@ android {
     packaging {
         resources {
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+        }
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
         }
     }
 }
@@ -85,12 +92,6 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
 
     compileOnly("javax.annotation:javax.annotation-api:1.3.2")
-}
-
-android.publishing {
-    singleVariant("release") {
-        withSourcesJar()
-    }
 }
 
 afterEvaluate {
