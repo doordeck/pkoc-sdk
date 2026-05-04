@@ -66,7 +66,11 @@ protobuf {
 }
 
 dependencies {
-    implementation(libs.protobuf.javalite)
+    // protobuf-javalite is `api` because generated proto types (Organization, Credential,
+    // GetCredentialsResponse, Identity) appear in the public surface of OrganizationService /
+    // CredentialService, and reading their fields requires GeneratedMessageLite on the
+    // consumer's compile classpath.
+    api(libs.protobuf.javalite)
     implementation(libs.grpc.okhttp)
     implementation(libs.grpc.protobuf.lite)
     implementation(libs.grpc.stub)
