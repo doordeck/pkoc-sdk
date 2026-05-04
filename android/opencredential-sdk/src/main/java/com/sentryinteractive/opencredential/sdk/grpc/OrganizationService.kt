@@ -33,14 +33,20 @@ class OrganizationService {
         return Organization.parseFrom(msgBytes)
     }
 
+    /**
+     * Look up an organization by its server-assigned id. The server requires authentication
+     * for this endpoint (it returns the contact details of an arbitrary org by id, so it's
+     * gated on the caller proving they have a credential). Pass [signer] to authenticate;
+     * leaving it null preserves backwards compatibility with older callers but will fail
+     * with `UNAUTHENTICATED` on current backends.
+     */
     @Throws(IOException::class, GrpcWebException::class)
-    fun getOrganizationById(organizationId: String): Organization {
-        // Anonymous lookup.
+    fun getOrganizationById(organizationId: String, signer: Signer? = null): Organization {
         val request = GetOrganizationByIdRequest.newBuilder()
             .setOrganizationId(organizationId)
             .build()
 
-        val responseBytes = client.call(SERVICE_PATH, "GetOrganizationById", request)
+        val responseBytes = client.call(SERVICE_PATH, "GetOrganizationById", request, signer)
         val msgBytes = client.parseGrpcWebDataFrame(responseBytes)
         return Organization.parseFrom(msgBytes)
     }
