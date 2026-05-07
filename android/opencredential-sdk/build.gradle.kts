@@ -13,6 +13,11 @@ android {
 
     defaultConfig {
         minSdk = 28
+        // Ship consumer-rules.pro into the AAR so dependent apps (e.g., pkoc-brandings) keep
+        // protobuf-javalite generated fields and gRPC stubs through R8. Without this, release
+        // builds with isMinifyEnabled=true strip `inviteCode_` etc., breaking reflective access
+        // at runtime ("Field inviteCode_ for bj0 not found").
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     compileOptions {
