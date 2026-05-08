@@ -3,6 +3,8 @@ package com.sentryinteractive.opencredential.sdk.grpc
 import com.sentryinteractive.opencredential.api.common.Identity
 import com.sentryinteractive.opencredential.api.organization.GetOrganizationByIdRequest
 import com.sentryinteractive.opencredential.api.organization.GetOrganizationByInviteCodeRequest
+import com.sentryinteractive.opencredential.api.organization.ListOrganizationsRequest
+import com.sentryinteractive.opencredential.api.organization.ListOrganizationsResponse
 import com.sentryinteractive.opencredential.api.organization.Organization
 import com.sentryinteractive.opencredential.api.organization.RevokeSharedCredentialFromOrganizationRequest
 import com.sentryinteractive.opencredential.api.organization.ShareCredentialWithOrganizationRequest
@@ -49,6 +51,28 @@ class OrganizationService {
         val responseBytes = client.call(SERVICE_PATH, "GetOrganizationById", request, signer)
         val msgBytes = client.parseGrpcWebDataFrame(responseBytes)
         return Organization.parseFrom(msgBytes)
+    }
+
+    /**
+     * Lists organizations whose invites the caller has accepted with a verified identity.
+     * Replaces the prior client-side bookkeeping pattern (apps tracking accepted orgIds in
+     * local storage and re-resolving via [getOrganizationById]) — the server is now the
+     * source of truth.
+     *
+     * [identity] optionally scopes results to invites accepted under that identity; pass null
+     * to span every verified credential held by the caller. Requires [signer] — the server
+     * rejects unauthenticated calls with `UNAUTHENTICATED`.
+     */
+    @Throws(IOException::class, GrpcWebException::class)
+    fun listOrganizations(signer: Signer, identity: Identity? = null): List<Organization> {
+        val builder = ListOrganizationsRequest.newBuilder()
+        if (identity != null) {
+            builder.setIdentity(identity)
+        }
+
+        val responseBytes = client.call(SERVICE_PATH, "ListOrganizations", builder.build(), signer)
+        val msgBytes = client.parseGrpcWebDataFrame(responseBytes)
+        return ListOrganizationsResponse.parseFrom(msgBytes).organizationsList
     }
 
     @Throws(IOException::class, GrpcWebException::class)

@@ -10,10 +10,23 @@ option java_package = "com.sentryinteractive.opencredential.api.organization";
 option java_outer_classname = "OrganizationProtoV1Alpha";
 
 service OrganizationService {
+  // Lists organizations whose invites the caller has accepted with a verified identity. Acceptance
+  // is a standing offer to share — it does not imply the organization has requested any data, nor
+  // that any has been exchanged. If `identity` is set, results are scoped to invites accepted under
+  // that identity; otherwise they span every verified credential held by the caller.
+  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse);
   rpc GetOrganizationByInviteCode(GetOrganizationByInviteCodeRequest) returns (Organization);
   rpc GetOrganizationById(GetOrganizationByIdRequest) returns (Organization);
   rpc ShareCredentialWithOrganization(ShareCredentialWithOrganizationRequest) returns (google.protobuf.Empty);
   rpc RevokeSharedCredentialFromOrganization(RevokeSharedCredentialFromOrganizationRequest) returns (google.protobuf.Empty);
+}
+
+message ListOrganizationsRequest {
+  optional com.sentryinteractive.opencredential.common.v1alpha.Identity identity = 1;
+}
+
+message ListOrganizationsResponse {
+  repeated Organization organizations = 1;
 }
 
 message GetOrganizationByInviteCodeRequest {
