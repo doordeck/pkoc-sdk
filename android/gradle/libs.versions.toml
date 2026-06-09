@@ -5,13 +5,14 @@ protobufPlugin = "0.10.0"
 grpc = "1.81.0"
 protobufLib = "4.35.0"
 okhttp = "5.3.2"
-bouncycastle = "1.84"
 compose-bom = "2026.05.01"
 activity-compose = "1.13.0"
 lifecycle = "2.10.0"
 jdom = "2.0.6.1"
 jose4j = "0.9.6"
-netty = "4.1.132.Final"
+netty = "4.1.135.Final"
+commons-lang3 = "3.20.0"
+httpclient = "4.5.14"
 
 [libraries]
 protobuf-javalite = { group = "com.google.protobuf", name = "protobuf-javalite", version.ref = "protobufLib" }
@@ -19,8 +20,6 @@ grpc-okhttp = { group = "io.grpc", name = "grpc-okhttp", version.ref = "grpc" }
 grpc-protobuf-lite = { group = "io.grpc", name = "grpc-protobuf-lite", version.ref = "grpc" }
 grpc-stub = { group = "io.grpc", name = "grpc-stub", version.ref = "grpc" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
-bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
@@ -34,6 +33,8 @@ lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-
 # Build dependencies
 jdom = { group = "org.jdom", name = "jdom2", version.ref = "jdom" }
 jose4j = { group = "org.bitbucket.b_c", name = "jose4j", version.ref = "jose4j" }
+commons-lang3 = { group = "org.apache.commons", name = "commons-lang3", version.ref = "commons-lang3" }
+httpclient = { group = "org.apache.httpcomponents", name = "httpclient", version.ref = "httpclient" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

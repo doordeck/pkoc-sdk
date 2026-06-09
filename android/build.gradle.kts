@@ -12,13 +12,8 @@ buildscript {
         resolutionStrategy {
             force(libs.jdom)
             force(libs.jose4j)
-
-            eachDependency {
-                if (requested.group == "io.netty") {
-                    useVersion(libs.versions.netty.get())
-                    because("Various security fixes")
-                }
-            }
+            force(libs.commons.lang3)
+            force(libs.httpclient)
         }
     }
 }

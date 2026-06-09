@@ -80,8 +80,6 @@ dependencies {
     implementation(libs.grpc.protobuf.lite)
     implementation(libs.grpc.stub)
     implementation(libs.okhttp)
-    implementation(libs.bcpkix)
-    implementation(libs.bcprov)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
