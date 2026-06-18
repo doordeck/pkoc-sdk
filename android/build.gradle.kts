@@ -27,10 +27,17 @@ buildscript {
 
 allprojects {
     configurations.all {
-        resolutionStrategy.eachDependency {
-            if (requested.group == "io.netty") {
-                useVersion(rootProject.libs.versions.netty.get())
-                because("Various security fixes")
+        resolutionStrategy {
+            force(rootProject.libs.commons.lang3)
+            force(rootProject.libs.httpclient)
+            force(rootProject.libs.bcprov)
+            force(rootProject.libs.bcpkix)
+
+            eachDependency {
+                if (requested.group == "io.netty") {
+                    useVersion(rootProject.libs.versions.netty.get())
+                    because("Various security fixes")
+                }
             }
         }
     }
