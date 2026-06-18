@@ -5,13 +5,15 @@ plugins {
 }
 
 // Force minimum versions for vulnerable transitive build dependencies.
-// Root buildscript covers the AGP plugin classpath (bundletool → jose4j, jdom2).
-// allprojects covers all project configurations (protobuf plugin's grpc-netty).
 buildscript {
     configurations.all {
         resolutionStrategy {
             force(libs.jdom)
             force(libs.jose4j)
+            force(libs.commons.lang3)
+            force(libs.httpclient)
+            force(libs.bcprov)
+            force(libs.bcpkix)
 
             eachDependency {
                 if (requested.group == "io.netty") {
