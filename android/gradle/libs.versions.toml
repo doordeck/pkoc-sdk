@@ -12,7 +12,7 @@ lifecycle = "2.10.0"
 jdom = "2.0.6.1"
 jose4j = "0.9.6"
 netty = "4.1.135.Final"
-commons-lang3 = "3.18.0"
+commons-lang3 = "3.20.0"
 httpclient = "4.5.14"
 
 [libraries]
