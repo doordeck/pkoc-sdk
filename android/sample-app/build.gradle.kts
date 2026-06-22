@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.sentryinteractive.opencredential.sample"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.sentryinteractive.opencredential.sample"

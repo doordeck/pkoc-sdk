@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.sentryinteractive.opencredential.sdk"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 28
