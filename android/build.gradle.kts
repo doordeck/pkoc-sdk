@@ -12,6 +12,8 @@ buildscript {
             force(libs.jose4j)
             force(libs.commons.lang3)
             force(libs.httpclient)
+            force(libs.bcprov)
+            force(libs.bcpkix)
         }
     }
 }
@@ -21,6 +23,8 @@ allprojects {
         resolutionStrategy {
             force(rootProject.libs.commons.lang3)
             force(rootProject.libs.httpclient)
+            force(rootProject.libs.bcprov)
+            force(rootProject.libs.bcpkix)
 
             eachDependency {
                 if (requested.group == "io.netty") {
