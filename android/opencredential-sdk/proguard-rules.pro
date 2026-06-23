@@ -17,3 +17,7 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
+
+# Bouncy Castle
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
