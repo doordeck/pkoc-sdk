@@ -11,7 +11,7 @@ activity-compose = "1.13.0"
 lifecycle = "2.11.0"
 jdom = "2.0.6.1"
 jose4j = "0.9.6"
-netty = "4.1.135.Final"
+netty = "4.1.137.Final"
 commons-lang3 = "3.20.0"
 httpclient = "4.5.14"
 
