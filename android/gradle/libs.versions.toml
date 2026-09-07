@@ -2,7 +2,7 @@
 agp = "9.3.2"
 kotlin = "2.4.10"
 protobufPlugin = "0.10.0"
-grpc = "1.83.1"
+grpc = "1.84.0"
 protobufLib = "4.36.1"
 okhttp = "5.5.0"
 bouncycastle = "1.85"
