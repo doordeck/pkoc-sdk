@@ -61,4 +61,5 @@ jobs:
             pkg:maven/org.jacoco/org.jacoco.core,
             pkg:maven/org.jacoco/org.jacoco.report,
             pkg:maven/com.google.errorprone/error_prone_annotations,
-            pkg:maven/com.android.tools.external.com-intellij/kotlin-compiler
+            pkg:maven/com.android.tools.external.com-intellij/kotlin-compiler,
+            pkg:maven/org.bouncycastle/bcprov-jdk18on
