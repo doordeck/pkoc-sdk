@@ -5,7 +5,11 @@ plugins {
 
 android {
     namespace = "com.sentryinteractive.opencredential.sample"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "com.sentryinteractive.opencredential.sample"
